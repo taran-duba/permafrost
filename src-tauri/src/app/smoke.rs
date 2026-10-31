@@ -1,6 +1,6 @@
 //! Start-up smoke test, used by CI on a Windows runner.
 //!
-//! `CADSYNC_SMOKE=<result.json> cadsync.exe` runs the real app (window,
+//! `CADSYNC_SMOKE=<result.json> permafrost.exe` runs the real app (window,
 //! webview, IPC, SQLite, file system) against the demo vault, then exits:
 //! 0 if everything worked, 1 otherwise. The result file says which checks
 //! passed. Nothing touches Google Drive.
@@ -69,7 +69,7 @@ pub fn start(app: AppHandle, out: PathBuf) {
         result.elapsed_ms = started.elapsed().as_millis();
 
         let json = serde_json::to_string_pretty(&result).unwrap_or_default();
-        println!("cadsync smoke test result:\n{json}");
+        println!("permafrost smoke test result:\n{json}");
         if let Err(e) = std::fs::write(&out, &json) {
             eprintln!("could not write {}: {e}", out.display());
         }
@@ -114,7 +114,7 @@ async fn run(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
             r.sidecar = Some(version);
         }
         // The installer bundles SwRefs only on Windows.
-        None if cfg!(windows) => return Err("SwRefs.exe is not next to cadsync.exe".into()),
+        None if cfg!(windows) => return Err("SwRefs.exe is not next to permafrost.exe".into()),
         None => {}
     }
 

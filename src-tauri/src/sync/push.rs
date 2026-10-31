@@ -4,9 +4,9 @@
 //!  1. Verify every file is checked out by me and still at the revision I
 //!     started from. Nothing is uploaded unless all files pass.
 //!  2. Journal the plan locally, then upload parts, then assemblies, then
-//!     drawings. Each upload is tagged `cadsyncPending=<changeset>`, and other
+//!     drawings. Each upload is tagged `permafrostPending=<changeset>`, and other
 //!     clients ignore tagged revisions.
-//!  3. Write the manifest `.cadsync/changesets/<id>.json`. That write is the
+//!  3. Write the manifest `.permafrost/changesets/<id>.json`. That write is the
 //!     commit; from then on, other clients pull all files together.
 //!  4. Mark revisions keep-forever, clear tags, and release or keep the locks.
 //!
@@ -177,7 +177,7 @@ impl<D: DriveApi> Vault<D> {
             let patch = if j.keep_locked {
                 MetadataPatch::default()
                     .unset(props::PENDING_CHANGESET)
-                    .read_only(true, Some(format!("Checked out by {} in cadsync", self.me)))
+                    .read_only(true, Some(format!("Checked out by {} in permafrost", self.me)))
             } else {
                 Self::unlock_patch().unset(props::PENDING_CHANGESET)
             };
@@ -250,7 +250,7 @@ impl<D: DriveApi> Vault<D> {
         Ok(parent_id)
     }
 
-    /// The hidden `.cadsync` folder at the drive root, created if missing.
+    /// The hidden `.permafrost` folder (or a legacy `.cadsync` one) in the vault folder, created if missing.
     pub(crate) async fn ensure_meta_folder(&self) -> Result<String> {
         if let Some(id) = self.paths()?.meta_folder_id {
             return Ok(id);
@@ -434,9 +434,9 @@ mod tests {
         assert_eq!(out.files, 2);
 
         // Check-in records went inside the chosen folder, not the drive root.
-        let meta: Vec<_> = av.index.all_files().unwrap().into_iter().filter(|f| f.name == ".cadsync").collect();
+        let meta: Vec<_> = av.index.all_files().unwrap().into_iter().filter(|f| f.name == ".permafrost").collect();
         assert_eq!(meta.len(), 1);
-        assert_eq!(meta[0].parent.as_deref(), Some(cache.as_str()), ".cadsync lives in the vault folder");
+        assert_eq!(meta[0].parent.as_deref(), Some(cache.as_str()), ".permafrost lives in the vault folder");
 
         let r = bv.sync_down().await.unwrap();
         assert_eq!(r.downloaded, 2);

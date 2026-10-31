@@ -242,7 +242,7 @@ async fn wait_for_code(listener: &TcpListener, expected_state: &str) -> Result<S
         } else if q.get("state").map(String::as_str) != Some(expected_state) {
             (Err(Error::Auth("sign-in state mismatch".into())), "Sign-in failed. You can close this tab.")
         } else if let Some(code) = q.get("code") {
-            (Ok(code.clone()), "Signed in to cadsync. You can close this tab.")
+            (Ok(code.clone()), "Signed in to permafrost. You can close this tab.")
         } else {
             continue;
         };

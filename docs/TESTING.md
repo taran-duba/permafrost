@@ -1,6 +1,6 @@
-# Testing cadsync on Windows
+# Testing permafrost on Windows
 
-cadsync has only been tested on macOS against a fake Google Drive. This guide checks that it
+permafrost has only been tested on macOS against a fake Google Drive. This guide checks that it
 really works for the team: real Drive, real SolidWorks, two people at once. Work through it in
 order, and fill in the results table at the end.
 
@@ -100,10 +100,10 @@ docs, never tested. If any of them fails, stop and report it before going furthe
 
 ### 4a. A check-out blocks uploads from the Drive website
 
-1. **PC A:** add the test assembly through cadsync, so its references point inside the vault:
+1. **PC A:** add the test assembly through permafrost, so its references point inside the vault:
    1. Copy the assembly and its parts into `C:\CAD\Test Drive\Test Assembly\`.
    2. Open the assembly **from that folder** in SolidWorks, do **Save All**, and close it.
-   3. In cadsync, go to **My changes**, tick all the new files, click **Review check-in**, and
+   3. In permafrost, go to **My changes**, tick all the new files, click **Review check-in**, and
       check them in.
 
    **Expected:**
@@ -116,7 +116,7 @@ docs, never tested. If any of them fails, stop and report it before going furthe
 **Expected:**
 - [ ] PC B's app shows the part as checked out by Alex (🔒 alex) within about 15 s.
 - [ ] **Drive refuses Blair's upload** (the file is locked or read-only). If the upload
-  succeeds, write that down. cadsync users are still protected, but the Drive website isn't.
+  succeeds, write that down. permafrost users are still protected, but the Drive website isn't.
 
 ### 4b. Only one person can check out
 
@@ -140,7 +140,7 @@ docs, never tested. If any of them fails, stop and report it before going furthe
 1. **PC A:** check out the assembly and one of its parts.
 2. In SolidWorks on PC A, open the assembly. Change a dimension in the part that moves a mated
    face, e.g. make the plate thicker or move a hole. Rebuild, and save both files.
-3. In cadsync, go to **My changes**, tick **only the assembly**, then click **Review check-in**.
+3. In permafrost, go to **My changes**, tick **only the assembly**, then click **Review check-in**.
 
    **Expected:**
    - [ ] The part you edited appears under "Added automatically because your assemblies use them".
@@ -187,7 +187,7 @@ Run each case on PC A, click **Review check-in**, note what it shows, and then u
 - [ ] While it's open, the top bar says "… waiting for SolidWorks to close", and the files don't
   change.
 - [ ] Within about 15 s of closing, the update arrives.
-- [ ] Look in the part's folder for a `~$PartName.SLDPRT` file while it's open. cadsync uses
+- [ ] Look in the part's folder for a `~$PartName.SLDPRT` file while it's open. permafrost uses
   that file to tell that SolidWorks has a document open. **Write down whether it appears.** If
   it doesn't, this check can't work.
 
@@ -201,9 +201,9 @@ Run each case on PC A, click **Review check-in**, note what it shows, and then u
 
 2. Check out a part and edit it. In **My changes**, tick the part **and** `big-test-file.bin`,
    then click **Check in**.
-3. While it says "Checking in…", end **cadsync** in Task Manager.
+3. While it says "Checking in…", end **permafrost** in Task Manager.
 4. **PC B:** click **Sync now**.
-5. **PC A:** start cadsync again and wait about 30 s.
+5. **PC A:** start permafrost again and wait about 30 s.
 
 **Expected:**
 - [ ] After step 4, PC B gets **neither** file, even if part of the upload finished. Anything
@@ -262,7 +262,7 @@ Then sync.
 - [ ] After step 1 the part is back on PC B, with a message that it was put back.
 - [ ] After step 2 the part disappears on both PCs. It's in the shared drive's **Trash** on the
   Drive website, and PC A's copy is in the app's trash folder.
-- [ ] In step 3, cadsync warns "… is used by TestAssembly.SLDASM" before deleting. This only works
+- [ ] In step 3, permafrost warns "… is used by TestAssembly.SLDASM" before deleting. This only works
   if that assembly has been checked in from a PC with the SolidWorks key set.
 
 ### 6g2. A folder inside a bigger drive
@@ -273,8 +273,9 @@ Then sync.
 
 **Expected:**
 - [ ] Only files inside the picked folder appear in Vault and under `C:\CAD\Test Drive`.
-- [ ] After a check-in, a hidden `.cadsync` folder appears **inside** the picked folder in Drive,
-  not at the top of the drive.
+- [ ] After a check-in, a hidden `.permafrost` folder appears **inside** the picked folder in Drive,
+  not at the top of the drive. (If the folder already has a `.cadsync` folder from an older version, that one is
+  reused and no new folder is created.)
 - [ ] Dragging a subfolder with files into the picked folder (in the Drive website) makes it
   appear on both PCs within about 15 s. Dragging one out makes it disappear.
 - [ ] A link to a folder pasted into the picker opens it too.
@@ -293,18 +294,18 @@ Then sync.
 
 ### 6h. Only one copy runs
 
-1. With cadsync open, start it again from the Start menu.
+1. With permafrost open, start it again from the Start menu.
 
 **Expected:**
 - [ ] No second window opens. The existing window comes to the front.
 
 ### 6i. Expired sign-in
 
-1. Go to <https://myaccount.google.com/connections>, find the cadsync app, and remove its access.
+1. Go to <https://myaccount.google.com/connections>, find the permafrost app, and remove its access.
 2. Wait about 30 s, or click **Sync now**.
 
 **Expected:**
-- [ ] cadsync goes back to the welcome screen with "Your Google sign-in expired or was removed".
+- [ ] permafrost goes back to the welcome screen with "Your Google sign-in expired or was removed".
 - [ ] After signing in again, the same drive opens, and files and check-outs are as before.
 
 ## Part 7: Speed (on the team's real drive)
@@ -328,7 +329,7 @@ This part is read-only (only tick **Get** on folders), so it's safe to run on th
 | Settings | `%APPDATA%\org.frc.cadsync\config.json` |
 | Local index (safe to delete; it rebuilds) | `%APPDATA%\org.frc.cadsync\<drive id>\index.sqlite` |
 | Files removed from the vault | `%APPDATA%\org.frc.cadsync\<drive id>\trash\` |
-| Check-in records on Drive | `.cadsync/changesets/` in the shared drive |
+| Check-in records on Drive | `.permafrost/changesets/` in the shared drive (`.cadsync/changesets/` on drives from older versions) |
 | Logs and crash reports | Settings › **Open logs folder** (`%LOCALAPPDATA%\org.frc.cadsync\logs`). Set `RUST_LOG=cadsync=debug` for more detail. |
 
 ## Results

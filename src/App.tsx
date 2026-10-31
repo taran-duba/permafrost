@@ -49,7 +49,7 @@ export default function App() {
     refreshStatus().then(() => api.frontendReady().catch(() => {}));
     api
       .takeNewCrashReport()
-      .then((p) => p && toasts.warn("cadsync crashed last time. A crash report was saved — Settings › Open logs folder."))
+      .then((p) => p && toasts.warn("permafrost crashed last time. A crash report was saved — Settings › Open logs folder."))
       .catch(() => {});
     const unlisten = [
       listen("vault-changed", () => {
@@ -100,7 +100,7 @@ export default function App() {
     return (
       <div className="onboarding">
         <div className="starting">
-          <Spinner size={18} label="Starting" /> Starting cadsync…
+          <Spinner size={18} label="Starting" /> Starting permafrost…
         </div>
       </div>
     );
@@ -120,7 +120,7 @@ export default function App() {
           <span className="logo" aria-hidden>
             ◆
           </span>
-          cadsync
+          permafrost
           {status?.demo && <span className="pill pill-warn">demo</span>}
         </div>
         {signedIn && (

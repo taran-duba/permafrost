@@ -1,8 +1,8 @@
 [package]
-name = "cadsync"
+name = "permafrost"
 version = "0.1.0"
 description = "SolidWorks + Google Drive sync with check-out locks and atomic changesets"
-authors = ["cadsync contributors"]
+authors = ["permafrost contributors"]
 edition = "2021"
 
 [lib]

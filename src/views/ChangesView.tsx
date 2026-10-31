@@ -251,7 +251,7 @@ export function ChangesView({
           </div>
           {busy && (
             <p className="small muted fade-in">
-              Uploading your files and recording the check-in. Keep cadsync open until this finishes.
+              Uploading your files and recording the check-in. Keep permafrost open until this finishes.
             </p>
           )}
         </div>

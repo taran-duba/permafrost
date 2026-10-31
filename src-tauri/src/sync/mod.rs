@@ -19,7 +19,7 @@ use crate::index::{Index, PathMap};
 pub struct Vault<D> {
     pub drive: D,
     pub index: Index,
-    /// The vault folder: the root of everything cadsync syncs. Any folder in
+    /// The vault folder: the root of everything permafrost syncs. Any folder in
     /// Drive (a shared drive's root, or a folder deep inside one, or in My Drive).
     pub root_id: String,
     /// The shared drive the folder is in, if any (speeds up listing).
