@@ -10,7 +10,10 @@ use crate::drive::RemoteFile;
 use crate::names::{is_temp_file, FolderNamer};
 
 /// Name of the hidden folder on the shared drive that holds app metadata.
-pub const META_FOLDER: &str = ".cadsync";
+pub const META_FOLDER: &str = ".permafrost";
+/// What that folder was called when the app was cadsync. A vault that already
+/// has one keeps using it, so older clients still find the same records.
+pub const LEGACY_META_FOLDER: &str = ".cadsync";
 
 #[derive(Default)]
 pub struct PathMap {
@@ -18,6 +21,7 @@ pub struct PathMap {
     by_path: HashMap<String, String>,
     /// Files whose local name differs from their Drive name to stay unique.
     pub renamed: Vec<String>,
+    /// The metadata folder: `.permafrost` if there is one, else a legacy `.cadsync`.
     pub meta_folder_id: Option<String>,
 }
 
@@ -41,8 +45,10 @@ impl PathMap {
             children.sort_by(|a, b| (&a.created_time, &a.id).cmp(&(&b.created_time, &b.id)));
             let mut namer = FolderNamer::new();
             for f in children.iter() {
-                if folder == root_id && f.name == META_FOLDER && f.is_folder() {
-                    map.meta_folder_id = Some(f.id.clone());
+                if folder == root_id && f.is_folder() && (f.name == META_FOLDER || f.name == LEGACY_META_FOLDER) {
+                    if f.name == META_FOLDER || map.meta_folder_id.is_none() {
+                        map.meta_folder_id = Some(f.id.clone());
+                    }
                     continue;
                 }
                 if is_temp_file(&f.name) {
@@ -132,7 +138,7 @@ mod tests {
             f("d1", "root", "Drive/Train", true, "1"),
             f("p2", "d1", "Gear.SLDPRT", false, "3"),
             f("p1", "d1", "gear.sldprt", false, "2"),
-            f("m", "root", ".cadsync", true, "0"),
+            f("m", "root", ".permafrost", true, "0"),
             f("cs", "m", "x.json", false, "0"),
             f("tmp", "d1", "~$Gear.SLDPRT", false, "4"),
             f("orphan", "nowhere", "lost.sldprt", false, "5"),
@@ -167,5 +173,23 @@ mod tests {
         let dups = map.duplicate_names(&files);
         assert_eq!(dups.len(), 1);
         assert_eq!(dups["spacer.sldprt"], ["s1", "s2"]);
+    }
+
+    #[test]
+    fn meta_folder_prefers_new_name_but_accepts_legacy() {
+        let legacy = f("old", "root", ".cadsync", true, "1");
+        let current = f("new", "root", ".permafrost", true, "2");
+        let doc = f("d", "root", "Gear.SLDPRT", false, "3");
+
+        let map = PathMap::build("root", &[legacy.clone(), doc.clone()]);
+        assert_eq!(map.meta_folder_id.as_deref(), Some("old"));
+        assert!(!map.contains("old"), "legacy folder stays hidden");
+
+        // Both present: the new one wins whichever comes first.
+        for files in [vec![legacy.clone(), current.clone()], vec![current, legacy]] {
+            let map = PathMap::build("root", &files);
+            assert_eq!(map.meta_folder_id.as_deref(), Some("new"));
+            assert!(!map.contains("old") && !map.contains("new"));
+        }
     }
 }

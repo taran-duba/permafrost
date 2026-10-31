@@ -1,4 +1,4 @@
-# Builds cadsync on an Apple Silicon Mac, runs the Rust and SwRefs tests,
+# Builds permafrost on an Apple Silicon Mac, runs the Rust and SwRefs tests,
 # packages the .app and .dmg, and checks the built app really starts.
 # SolidWorks doesn't run on macOS, so reference checking isn't part of this build.
 name: macOS
@@ -67,8 +67,8 @@ jobs:
         env:
           HAS_GOOGLE_SECRETS: ${{ secrets.CADSYNC_GOOGLE_CLIENT_ID != '' }}
         run: |
-          app="src-tauri/target/release/bundle/macos/cadsync.app"
-          test -d "$app" || { echo "cadsync.app was not built"; exit 1; }
+          app="src-tauri/target/release/bundle/macos/Permafrost.app"
+          test -d "$app" || { echo "Permafrost.app was not built"; exit 1; }
           codesign --verify --deep --strict "$app"
           result="$RUNNER_TEMP/smoke.json"
           rm -f "$result"
@@ -77,19 +77,19 @@ jobs:
           # Fail if the app was built without the Google client.
           if [ "$HAS_GOOGLE_SECRETS" = "true" ]; then export CADSYNC_SMOKE_REQUIRE_SIGNIN=1; fi
 
-          "$app/Contents/MacOS/cadsync" &
+          "$app/Contents/MacOS/permafrost" &
           pid=$!
           sleep 8
-          screencapture -x "$RUNNER_TEMP/cadsync-macos.png" || echo "screenshot failed (non-fatal)"
+          screencapture -x "$RUNNER_TEMP/permafrost-macos.png" || echo "screenshot failed (non-fatal)"
 
           for i in $(seq 1 180); do kill -0 $pid 2>/dev/null || break; sleep 1; done
-          if kill -0 $pid 2>/dev/null; then kill $pid; echo "cadsync didn't exit within 3 minutes"; exit 1; fi
+          if kill -0 $pid 2>/dev/null; then kill $pid; echo "permafrost didn't exit within 3 minutes"; exit 1; fi
           wait $pid && code=0 || code=$?
 
-          test -f "$result" || { echo "no smoke result written (did another cadsync instance swallow the launch?)"; exit 1; }
+          test -f "$result" || { echo "no smoke result written (did another permafrost instance swallow the launch?)"; exit 1; }
           cat "$result"
           [ "$code" = "0" ] || { echo "smoke test failed (exit code $code)"; exit 1; }
-          echo "cadsync started and passed the smoke test on macOS."
+          echo "permafrost started and passed the smoke test on macOS."
 
       - name: Upload smoke test result and screenshot
         if: always()
@@ -98,13 +98,13 @@ jobs:
           name: smoke-test-macos
           path: |
             ${{ runner.temp }}/smoke.json
-            ${{ runner.temp }}/cadsync-macos.png
+            ${{ runner.temp }}/permafrost-macos.png
           if-no-files-found: ignore
 
       - name: Upload dmg
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: cadsync-macos-dmg
+          name: permafrost-macos-dmg
           path: src-tauri/target/release/bundle/dmg/*.dmg
           if-no-files-found: error

@@ -60,7 +60,7 @@ pub fn log_dir(app: &tauri::AppHandle) -> PathBuf {
     app.path()
         .app_log_dir()
         .or_else(|_| app.path().app_data_dir().map(|d| d.join("logs")))
-        .unwrap_or_else(|_| PathBuf::from("cadsync-logs"))
+        .unwrap_or_else(|_| PathBuf::from("permafrost-logs"))
 }
 
 fn machine_name() -> String {

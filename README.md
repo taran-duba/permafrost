@@ -1,8 +1,8 @@
-# cadsync
+# Permafrost
 
 SolidWorks + Google Drive file sharing for FRC teams, built to fix what went wrong with CacheCAD:
 
-| Problem | What cadsync does |
+| Problem | What Permafrost does |
 | --- | --- |
 | Slow loading | A local SQLite index of your CAD folder (a whole shared drive, or just one folder inside it), updated incrementally from Drive's change feed. Browsing never waits on the network. |
 | Crashes | Drive names (`/`, emoji, `CON`, duplicates, trailing dots) are mapped to safe Windows names; sync runs in the background with a crash-safe journal. |
@@ -71,7 +71,7 @@ The installers are written to `src-tauri/target/release/bundle/` (`nsis/*-setup.
 On Windows, `pnpm tauri build` first runs `pnpm sidecar` (set in `src-tauri/tauri.windows.conf.json`),
 which runs [scripts/publish-swrefs.ps1](scripts/publish-swrefs.ps1). That publishes SwRefs as a
 self-contained single-file `win-x64` exe to `src-tauri/binaries/SwRefs-x86_64-pc-windows-msvc.exe`,
-and Tauri bundles it (`externalBin`) as `SwRefs.exe` next to `cadsync.exe`, which is where the app
+and Tauri bundles it (`externalBin`) as `SwRefs.exe` next to `permafrost.exe`, which is where the app
 looks for it. It fails if the interop DLL can't be found, so an installer can't ship without the
 real reader. The Document Manager license key is not bundled; each team sets it up as described
 in `docs/SETUP.md`.
@@ -85,7 +85,7 @@ macOS and Linux builds don't bundle SwRefs. The Windows-only settings are in
 
 ## Mac build
 
-CI builds an Apple Silicon `cadsync.app` and `.dmg` on every push (`.github/workflows/macos.yml`).
+CI builds an Apple Silicon `Permafrost.app` and `.dmg` on every push (`.github/workflows/macos.yml`).
 It's ad-hoc signed, not notarized, so on another Mac the first launch needs right-click › Open.
 There's no Intel build yet. SolidWorks doesn't run on macOS, so reference checking is off there;
 syncing, locks and check-ins work.

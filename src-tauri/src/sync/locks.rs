@@ -1,7 +1,7 @@
 //! Check-out locks.
 //!
 //! A lock is two things on the Drive file: appProperties naming the owner
-//! (which every cadsync client respects) and a read-only content restriction
+//! (which every Permafrost client respects) and a read-only content restriction
 //! (which also stops uploads from the Drive website). Drive has no
 //! compare-and-swap, so after writing a lock we wait briefly and re-read it;
 //! if someone else's lock id is there, they won the race. Check-in verifies
@@ -20,7 +20,7 @@ impl<D: DriveApi> Vault<D> {
             .set(props::LOCK_ID, &lock.lock_id)
             .set(props::LOCKED_AT, &lock.locked_at)
             .set(props::LOCK_MACHINE, &lock.machine)
-            .read_only(true, Some(format!("Checked out by {} in cadsync", lock.owner)))
+            .read_only(true, Some(format!("Checked out by {} in Permafrost", lock.owner)))
     }
 
     pub(crate) fn unlock_patch() -> MetadataPatch {
@@ -194,6 +194,35 @@ mod tests {
         a.vault.undo_check_out(&gear, false).await.unwrap();
         assert!(localfs::is_read_only(&a.vault.root.join("Gear.SLDPRT")));
         b.vault.check_out(&gear).await.unwrap();
+    }
+
+    /// A lock written by a cadsync-era client is still honoured, and clearing it
+    /// really clears it (no old key left behind to resurrect the lock).
+    #[tokio::test]
+    async fn locks_from_older_versions_are_respected_and_clearable() {
+        let (drive, gear) = setup().await;
+        let old = MetadataPatch::default()
+            .set("cadsyncLockOwner", "alex@team.org")
+            .set("cadsyncLockId", "L-old")
+            .set("cadsyncLockedAt", "2024-01-01T00:00:00Z")
+            .set("cadsyncLockMachine", "pc-a")
+            .read_only(true, None);
+        drive.update_metadata(&gear, old).await.unwrap();
+
+        let b = vault(&drive, "blair@team.org", "pc-b");
+        b.vault.index.set_selection(&b.vault.root_id, Some(true)).unwrap();
+        b.vault.sync_down().await.unwrap();
+
+        match b.vault.check_out(&gear).await {
+            Err(Error::Locked { by, .. }) => assert_eq!(by, "alex@team.org"),
+            other => panic!("expected Locked, got {other:?}"),
+        }
+
+        let cleared = b.vault.break_lock(&gear).await.unwrap();
+        assert!(cleared.lock().is_none());
+        assert!(cleared.app_properties.is_empty(), "{:?}", cleared.app_properties);
+        let lock = b.vault.check_out(&gear).await.unwrap();
+        assert_eq!(lock.owner, "blair@team.org");
     }
 
     #[tokio::test]

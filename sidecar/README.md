@@ -1,6 +1,6 @@
 # SwRefs sidecar
 
-A small .NET 8 console app that cadsync's Rust core starts as a child process to find out which
+A small .NET 8 console app that Permafrost's Rust core starts as a child process to find out which
 files a SolidWorks part, assembly or drawing references. It uses the SolidWorks Document Manager
 API, so SolidWorks does not need to be running.
 

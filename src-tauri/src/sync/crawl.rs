@@ -11,7 +11,7 @@ use crate::drive::{DriveApi, RemoteFile};
 use crate::error::Result;
 use crate::index::{Index, Manifest};
 
-pub const MANIFEST_PROP: &str = "cadsyncManifest";
+pub const MANIFEST_PROP: &str = crate::drive::props::MANIFEST;
 const PAGE_TOKEN: &str = "page_token";
 /// Which feed `PAGE_TOKEN` belongs to ("drive:<id>" or "user"). A change token
 /// from one feed is meaningless in the other, e.g. after the user is added to

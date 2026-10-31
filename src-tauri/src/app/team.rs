@@ -1,5 +1,5 @@
 //! Settings shared by the whole team, stored in the shared drive itself at
-//! `.cadsync/team.json`. Only drive members can read it, and whoever sets it
+//! `.permafrost/team.json`. Only drive members can read it, and whoever sets it
 //! up does so once for everybody — no per-computer configuration.
 
 use std::collections::BTreeMap;

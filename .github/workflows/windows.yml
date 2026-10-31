@@ -1,4 +1,4 @@
-# Builds cadsync on Windows, runs all tests, builds the installer, installs it,
+# Builds permafrost on Windows, runs all tests, builds the installer, installs it,
 # and checks the installed app really starts (window, UI, sync engine, SwRefs).
 name: Windows
 
@@ -78,12 +78,12 @@ jobs:
           Write-Host "Installing $($setup.Name)"
           $p = Start-Process $setup.FullName -ArgumentList '/S' -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
-          $exe = Get-ChildItem "$env:LOCALAPPDATA\cadsync", "$env:ProgramFiles\cadsync" -Filter cadsync.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) { throw "cadsync.exe not found after install" }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\permafrost", "$env:ProgramFiles\permafrost" -Filter permafrost.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "permafrost.exe not found after install" }
           $dir = Split-Path $exe.FullName
           Write-Host "Installed to $dir"
           Get-ChildItem $dir | Format-Table Name, Length
-          if (-not (Test-Path (Join-Path $dir "SwRefs.exe"))) { throw "SwRefs.exe was not installed next to cadsync.exe" }
+          if (-not (Test-Path (Join-Path $dir "SwRefs.exe"))) { throw "SwRefs.exe was not installed next to permafrost.exe" }
           "CADSYNC_EXE=$($exe.FullName)" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - name: Start the installed app (smoke test)
@@ -91,7 +91,7 @@ jobs:
           HAS_GOOGLE_SECRETS: ${{ secrets.CADSYNC_GOOGLE_CLIENT_ID != '' }}
         run: |
           $result = Join-Path $env:RUNNER_TEMP "smoke.json"
-          $shot = Join-Path $env:RUNNER_TEMP "cadsync-windows.png"
+          $shot = Join-Path $env:RUNNER_TEMP "permafrost-windows.png"
           $env:CADSYNC_SMOKE = $result
           # Fail if the installer was built without the Google client.
           if ($env:HAS_GOOGLE_SECRETS -eq "true") { $env:CADSYNC_SMOKE_REQUIRE_SIGNIN = "1" }
@@ -110,14 +110,14 @@ jobs:
 
           if (-not $p.WaitForExit(180000)) {
             $p.Kill()
-            throw "cadsync didn't exit within 3 minutes"
+            throw "permafrost didn't exit within 3 minutes"
           }
           # A second copy exits at once (single-instance lock) with code 0, so
           # the result file, not the exit code alone, proves this run tested.
-          if (-not (Test-Path $result)) { throw "no smoke result written (did another cadsync instance swallow the launch?)" }
+          if (-not (Test-Path $result)) { throw "no smoke result written (did another permafrost instance swallow the launch?)" }
           Get-Content $result
           if ($p.ExitCode -ne 0) { throw "smoke test failed (exit code $($p.ExitCode))" }
-          Write-Host "cadsync started and passed the smoke test on Windows."
+          Write-Host "permafrost started and passed the smoke test on Windows."
 
       - name: Upload smoke test result and screenshot
         if: always()
@@ -126,14 +126,14 @@ jobs:
           name: smoke-test
           path: |
             ${{ runner.temp }}/smoke.json
-            ${{ runner.temp }}/cadsync-windows.png
+            ${{ runner.temp }}/permafrost-windows.png
           if-no-files-found: ignore
 
       - name: Upload installers
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: cadsync-windows-installers
+          name: permafrost-windows-installers
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
