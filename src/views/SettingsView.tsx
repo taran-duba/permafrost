@@ -73,7 +73,7 @@ export function SettingsView({
       <div className="setting-block">
         <div className="setting-label">SolidWorks reference checking</div>
         <p className="muted small">
-          A Document Manager key (free from the SolidWorks Customer Portal) lets permafrost see which parts each assembly
+          A Document Manager key (free from the SolidWorks Customer Portal) lets Permafrost see which parts each assembly
           uses. Whoever sets it here sets it for the whole team; it's stored in the shared drive.
         </p>
         <div className="inline-form">

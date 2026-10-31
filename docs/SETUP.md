@@ -1,8 +1,8 @@
 # Setup
 
-For students, using permafrost is:
+For students, using Permafrost is:
 
-1. Install permafrost.
+1. Install Permafrost.
 2. Click **Sign in with Google**, and allow it to access Google Drive.
 3. Pick your team's CAD folder: browse to it and click **Use this folder**, or paste a link to it.
    It can be a whole shared drive, a folder inside one, a folder in My Drive, or one shared with
@@ -13,7 +13,7 @@ Two people do a one-time step first.
 
 ## Whoever builds the app (once, ever)
 
-permafrost needs a Google "OAuth client" so the Sign in with Google button works. You create it
+Permafrost needs a Google "OAuth client" so the Sign in with Google button works. You create it
 once and it gets built into the app, so nobody else ever sees it.
 
 1. Go to <https://console.cloud.google.com/> and create a project, e.g. `team1234-permafrost`.
@@ -38,16 +38,16 @@ For a desktop app the "secret" isn't really secret; Google's sign-in protects it
 
 - **The CAD folder:** it can be anywhere in Drive, e.g. a `CacheCAD` folder inside a bigger shared
   drive. Give every CAD member edit access to that folder: **Content manager** or higher on a
-  shared drive, or **Editor** on a folder. permafrost only ever reads and writes inside it. It's
+  shared drive, or **Editor** on a folder. Permafrost only ever reads and writes inside it. It's
   also fine to use a whole shared drive. Add every CAD member as **Content manager** or
-  higher. permafrost creates a hidden `.permafrost/` folder there for check-in records and team
+  higher. Permafrost creates a hidden `.permafrost/` folder there for check-in records and team
   settings. Don't delete it. (Drives set up when the app was called cadsync have a `.cadsync/`
-  folder instead; permafrost keeps using it.)
+  folder instead; Permafrost keeps using it.)
 - **SolidWorks key:** request a Document Manager key from the SolidWorks Customer Portal (API
   Support › Document Manager key), or through your reseller. FRC sponsorship licenses usually
-  qualify. Then in permafrost go to **Settings › SolidWorks reference checking**, paste it, and click
+  qualify. Then in Permafrost go to **Settings › SolidWorks reference checking**, paste it, and click
   **Save**. It's stored in the shared drive, so every member's app picks it up automatically.
-  Without it, permafrost still syncs and locks files, but it can't add an assembly's parts to a
+  Without it, Permafrost still syncs and locks files, but it can't add an assembly's parts to a
   check-in automatically or catch broken references.
 
 ## Good to know

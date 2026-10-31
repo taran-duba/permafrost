@@ -121,7 +121,7 @@ export function VaultView({
           <span>
             Reading your CAD folder…
             <span className="small">
-              The first time, permafrost reads every file name in it. Big folders can take a minute; after that it only
+              The first time, Permafrost reads every file name in it. Big folders can take a minute; after that it only
               checks for changes.
             </span>
           </span>
@@ -352,7 +352,7 @@ function LockHelp({
   const [sure, setSure] = useState(false);
   const lock = entry.lock!;
   const name = who(lock.owner);
-  const message = `Hey ${name}, can you check in ${entry.name} in permafrost (or Undo check-out if you didn't change it)? I need to edit it.`;
+  const message = `Hey ${name}, can you check in ${entry.name} in Permafrost (or Undo check-out if you didn't change it)? I need to edit it.`;
 
   const copy = async () => {
     try {
@@ -397,7 +397,7 @@ function LockHelp({
           ) : (
             <div className="notice notice-warn lock-help-warn">
               Anything {name} changed but didn't check in stays only on their computer and won't be in the team's
-              version. Their permafrost keeps it as a separate copy so it isn't lost, but someone has to redo or merge it.
+              version. Their Permafrost keeps it as a separate copy so it isn't lost, but someone has to redo or merge it.
               <div className="row">
                 <button className="btn btn-small btn-danger" disabled={busy} onClick={onTakeOver}>
                   Yes, take it over

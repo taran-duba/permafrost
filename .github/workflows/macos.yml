@@ -67,8 +67,8 @@ jobs:
         env:
           HAS_GOOGLE_SECRETS: ${{ secrets.CADSYNC_GOOGLE_CLIENT_ID != '' }}
         run: |
-          app="src-tauri/target/release/bundle/macos/permafrost.app"
-          test -d "$app" || { echo "permafrost.app was not built"; exit 1; }
+          app="src-tauri/target/release/bundle/macos/Permafrost.app"
+          test -d "$app" || { echo "Permafrost.app was not built"; exit 1; }
           codesign --verify --deep --strict "$app"
           result="$RUNNER_TEMP/smoke.json"
           rm -f "$result"

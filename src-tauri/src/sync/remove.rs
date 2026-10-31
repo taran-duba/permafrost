@@ -44,7 +44,7 @@ impl<D: DriveApi> Vault<D> {
     pub async fn delete_from_drive(&self, file_id: &str, force: bool) -> Result<DeleteOutcome> {
         let f = self.drive.get_file(file_id).await?;
         if f.is_folder() {
-            return Err(Error::Conflict("folders can't be deleted from permafrost yet; delete the files inside".into()));
+            return Err(Error::Conflict("folders can't be deleted from Permafrost yet; delete the files inside".into()));
         }
         if let Some(l) = f.lock() {
             if !self.i_hold_lock(&f) {

@@ -20,7 +20,7 @@ export function Onboarding({
           <span className="logo" aria-hidden>
             ◆
           </span>{" "}
-          permafrost
+          Permafrost
         </div>
         {status.account ? (
           <FolderPicker account={status.account} onChanged={onChanged} toasts={toasts} />
@@ -66,7 +66,7 @@ function Welcome({ status, onChanged, toasts }: { status: Status; onChanged: () 
           <span>
             Signing you back in…
             <span className="small">
-              If your Mac asks to allow permafrost to use the keychain, choose <strong>Always Allow</strong>.
+              If your Mac asks to allow Permafrost to use the keychain, choose <strong>Always Allow</strong>.
             </span>
           </span>
         </p>
@@ -85,7 +85,7 @@ function Welcome({ status, onChanged, toasts }: { status: Status; onChanged: () 
         </>
       ) : (
         <p className="notice notice-warn">
-          This copy of permafrost was built without Google sign-in. Whoever builds the app needs to add the team's
+          This copy of Permafrost was built without Google sign-in. Whoever builds the app needs to add the team's
           Google client file first (see docs/SETUP.md).
         </p>
       )}
@@ -200,7 +200,7 @@ function FolderPicker({ account, onChanged, toasts }: { account: string; onChang
           <Spinner size={18} label="Opening your folder" />
           <span>
             Opening your folder…
-            <span className="small">The first time, permafrost reads every file name in it. Big folders can take a minute.</span>
+            <span className="small">The first time, Permafrost reads every file name in it. Big folders can take a minute.</span>
           </span>
         </p>
       )}

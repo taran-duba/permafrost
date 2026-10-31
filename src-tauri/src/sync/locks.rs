@@ -1,7 +1,7 @@
 //! Check-out locks.
 //!
 //! A lock is two things on the Drive file: appProperties naming the owner
-//! (which every permafrost client respects) and a read-only content restriction
+//! (which every Permafrost client respects) and a read-only content restriction
 //! (which also stops uploads from the Drive website). Drive has no
 //! compare-and-swap, so after writing a lock we wait briefly and re-read it;
 //! if someone else's lock id is there, they won the race. Check-in verifies
@@ -20,7 +20,7 @@ impl<D: DriveApi> Vault<D> {
             .set(props::LOCK_ID, &lock.lock_id)
             .set(props::LOCKED_AT, &lock.locked_at)
             .set(props::LOCK_MACHINE, &lock.machine)
-            .read_only(true, Some(format!("Checked out by {} in permafrost", lock.owner)))
+            .read_only(true, Some(format!("Checked out by {} in Permafrost", lock.owner)))
     }
 
     pub(crate) fn unlock_patch() -> MetadataPatch {

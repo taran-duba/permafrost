@@ -1,32 +1,33 @@
 :root {
-  --bg: #f4f5f9;
-  --panel: #ffffff;
-  --text: #0f1424;
-  --muted: #5b6478;
-  --line: #e3e6ee;
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-text: #ffffff;
-  --accent-soft: #eceafd;
-  --ring: rgb(79 70 229 / 0.35);
-  --ok-bg: #e2f6ea;
-  --ok: #17703a;
-  --info-bg: #eceafd;
-  --info: #3b33b8;
-  --warn-bg: #fdf0d8;
-  --warn: #8a5300;
-  --bad-bg: #fde6e4;
-  --bad: #b0281c;
-  --lock-bg: #f3e8fd;
-  --lock: #6b2fa3;
-  --dim-bg: #eceff5;
-  --hover: #f1f2f8;
+  --bg: #eff4f7;
+  --panel: #fbfeff;
+  --text: #111c26;
+  --muted: #4c5d6a;
+  --line: #d4dce2;
+  --line-strong: #818e97;
+  --accent: #007085;
+  --accent-hover: #005e71;
+  --accent-text: #f8fdfe;
+  --accent-soft: #d4f0f5;
+  --ring: color-mix(in srgb, var(--accent) 40%, transparent);
+  --ok-bg: #d6f6e0;
+  --ok: #136239;
+  --info-bg: #d4f0f5;
+  --info: #007085;
+  --warn-bg: #fcebc7;
+  --warn: #754b10;
+  --bad-bg: #ffe4e1;
+  --bad: #9e231e;
+  --lock-bg: #fce6d9;
+  --lock: #744931;
+  --dim-bg: #e3ebef;
+  --hover: #e7f0f5;
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgb(15 20 36 / 0.05);
-  --shadow-md: 0 4px 14px rgb(15 20 36 / 0.08), 0 1px 3px rgb(15 20 36 / 0.05);
-  --shadow-lg: 0 18px 48px rgb(15 20 36 / 0.16), 0 2px 6px rgb(15 20 36 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(17 28 38 / 0.05);
+  --shadow-md: 0 4px 14px rgb(17 28 38 / 0.08), 0 1px 3px rgb(17 28 38 / 0.05);
+  --shadow-lg: 0 18px 48px rgb(17 28 38 / 0.16), 0 2px 6px rgb(17 28 38 / 0.06);
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
@@ -42,28 +43,29 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1019;
-    --panel: #151a26;
-    --text: #e8ebf4;
-    --muted: #9ba5ba;
-    --line: #262d3e;
-    --accent: #818cf8;
-    --accent-hover: #a5b0fb;
-    --accent-text: #0b0e1d;
-    --accent-soft: #1f2347;
-    --ring: rgb(129 140 248 / 0.45);
-    --ok-bg: #12301f;
-    --ok: #6fdc9a;
-    --info-bg: #1f2347;
-    --info: #b4bcff;
-    --warn-bg: #36290f;
-    --warn: #f5c76c;
-    --bad-bg: #3d1c1c;
-    --bad: #ff9f96;
-    --lock-bg: #2c2040;
-    --lock: #d2adff;
-    --dim-bg: #1d2333;
-    --hover: #1c2232;
+    --bg: #0b141b;
+    --panel: #131d25;
+    --text: #e5edf1;
+    --muted: #96a8b2;
+    --line: #28343f;
+    --line-strong: #677781;
+    --accent: #65d0dc;
+    --accent-hover: #85e2ed;
+    --accent-text: #05161f;
+    --accent-soft: #05343d;
+    --ring: color-mix(in srgb, var(--accent) 40%, transparent);
+    --ok-bg: #12301e;
+    --ok: #7ad59c;
+    --info-bg: #05343d;
+    --info: #65d0dc;
+    --warn-bg: #3b2b0d;
+    --warn: #eabc6e;
+    --bad-bg: #4b1d1b;
+    --bad: #fb9890;
+    --lock-bg: #3d281a;
+    --lock: #e7b18c;
+    --dim-bg: #1c252d;
+    --hover: #1a252f;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-md: 0 4px 14px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.3);
     --shadow-lg: 0 18px 48px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.35);
@@ -142,9 +144,8 @@ code,
   height: 26px;
   border-radius: 8px;
   font-size: 12px;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  box-shadow: 0 2px 8px rgb(99 102 241 / 0.4);
+  color: var(--accent-text);
+  background: var(--accent);
 }
 
 .topbar-info {
@@ -180,7 +181,6 @@ code,
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  position: relative;
   font-weight: 500;
   color: var(--muted);
   transition: background 0.15s var(--ease), color 0.15s var(--ease);
@@ -197,16 +197,6 @@ code,
   font-weight: 600;
 }
 
-.navitem.active::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
-}
 
 .navitem:disabled {
   color: var(--muted);
@@ -287,7 +277,7 @@ h3 {
   border-color: var(--accent);
   color: var(--accent-text);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgb(79 70 229 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.15);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -371,7 +361,7 @@ h3 {
 .search {
   width: 240px;
   padding: 7px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--panel);
   box-shadow: var(--shadow-sm);
@@ -503,14 +493,14 @@ input.inherited {
 .problems li {
   padding: 10px 12px;
   margin-bottom: 8px;
-  border-left: 3px solid var(--bad);
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent);
   background: var(--bad-bg);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   line-height: 1.45;
 }
 
 .problems li.waived {
-  border-left-color: var(--muted);
+  border-color: var(--line);
   background: var(--dim-bg);
 }
 
@@ -546,7 +536,7 @@ input.inherited {
 .field input,
 .field textarea {
   padding: 8px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--panel);
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
@@ -603,9 +593,9 @@ legend {
   line-height: 1.4;
 }
 
-.toast-warn { border-left: 4px solid var(--warn); }
-.toast-error { border-left: 4px solid var(--bad); }
-.toast-info { border-left: 4px solid var(--ok); }
+.toast-warn { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.toast-error { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+.toast-info { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
 
 .btn-danger {
   border-color: var(--bad);
@@ -632,10 +622,6 @@ legend {
   display: grid;
   place-items: center;
   padding: 24px;
-  background:
-    radial-gradient(600px 360px at 15% 0%, rgb(99 102 241 / 0.16), transparent 70%),
-    radial-gradient(520px 320px at 90% 100%, rgb(139 92 246 / 0.14), transparent 70%),
-    var(--bg);
 }
 
 .onboarding-card {
@@ -723,7 +709,7 @@ legend {
 .inline-form input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--panel);
 }

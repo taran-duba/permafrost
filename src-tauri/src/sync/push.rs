@@ -177,7 +177,7 @@ impl<D: DriveApi> Vault<D> {
             let patch = if j.keep_locked {
                 MetadataPatch::default()
                     .unset(props::PENDING_CHANGESET)
-                    .read_only(true, Some(format!("Checked out by {} in permafrost", self.me)))
+                    .read_only(true, Some(format!("Checked out by {} in Permafrost", self.me)))
             } else {
                 Self::unlock_patch().unset(props::PENDING_CHANGESET)
             };

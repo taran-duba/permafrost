@@ -1,8 +1,8 @@
-# permafrost
+# Permafrost
 
 SolidWorks + Google Drive file sharing for FRC teams, built to fix what went wrong with CacheCAD:
 
-| Problem | What permafrost does |
+| Problem | What Permafrost does |
 | --- | --- |
 | Slow loading | A local SQLite index of your CAD folder (a whole shared drive, or just one folder inside it), updated incrementally from Drive's change feed. Browsing never waits on the network. |
 | Crashes | Drive names (`/`, emoji, `CON`, duplicates, trailing dots) are mapped to safe Windows names; sync runs in the background with a crash-safe journal. |
@@ -85,7 +85,7 @@ macOS and Linux builds don't bundle SwRefs. The Windows-only settings are in
 
 ## Mac build
 
-CI builds an Apple Silicon `permafrost.app` and `.dmg` on every push (`.github/workflows/macos.yml`).
+CI builds an Apple Silicon `Permafrost.app` and `.dmg` on every push (`.github/workflows/macos.yml`).
 It's ad-hoc signed, not notarized, so on another Mac the first launch needs right-click › Open.
 There's no Intel build yet. SolidWorks doesn't run on macOS, so reference checking is off there;
 syncing, locks and check-ins work.

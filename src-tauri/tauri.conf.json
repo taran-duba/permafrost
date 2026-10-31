@@ -1,6 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "permafrost",
+  "productName": "Permafrost",
+  "mainBinaryName": "permafrost",
   "version": "0.1.0",
   "identifier": "org.frc.cadsync",
   "build": {
@@ -12,7 +13,7 @@
   "app": {
     "windows": [
       {
-        "title": "permafrost",
+        "title": "Permafrost",
         "width": 1180,
         "height": 760,
         "minWidth": 900,

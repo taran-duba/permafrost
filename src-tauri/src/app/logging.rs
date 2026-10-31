@@ -41,7 +41,7 @@ pub fn init(dir: &Path) -> LogGuard {
     };
     let _ = tracing_subscriber::registry().with(filter).with(fmt::layer()).with(file_layer).try_init();
     install_panic_hook(dir.to_path_buf());
-    tracing::info!(version = env!("CARGO_PKG_VERSION"), os = std::env::consts::OS, "permafrost starting");
+    tracing::info!(version = env!("CARGO_PKG_VERSION"), os = std::env::consts::OS, "Permafrost starting");
     LogGuard(guard)
 }
 
@@ -52,7 +52,7 @@ fn install_panic_hook(dir: PathBuf) {
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
         let path = dir.join(format!("crash-{stamp}.txt"));
         let _ = std::fs::write(&path, &report);
-        tracing::error!(report = %path.display(), "permafrost crashed: {}", panic_message(info));
+        tracing::error!(report = %path.display(), "Permafrost crashed: {}", panic_message(info));
         previous(info);
     }));
 }
@@ -67,7 +67,7 @@ fn panic_message(info: &std::panic::PanicHookInfo) -> String {
 
 fn crash_report(info: &std::panic::PanicHookInfo) -> String {
     format!(
-        "permafrost crash report\n\
+        "Permafrost crash report\n\
          version: {}\nos: {} {}\ntime: {}\nthread: {}\nlocation: {}\nmessage: {}\n\nbacktrace:\n{}\n",
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
