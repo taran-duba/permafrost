@@ -1,7 +1,7 @@
 //! Reading SolidWorks references and checking a check-in before it happens.
 //!
-//! `SidecarRefs` talks to the SwRefs helper (sidecar/SwRefs), which uses the
-//! SolidWorks Document Manager API. Protocol: one JSON object per line on
+//! `SidecarRefs` talks to the SwRefs helper (sidecar/SwRefs), which asks
+//! SolidWorks itself through its automation API. Protocol: one JSON object per line on
 //! stdin/stdout, e.g. `{"id":"1","op":"refs","path":"C:\\CAD\\..\\Robot.SLDASM"}`
 //! → `{"id":"1","ok":true,"refs":[{"path":..,"fileName":..,"exists":..,"isVirtual":..}]}`.
 
@@ -38,7 +38,6 @@ pub trait RefReader: Send + Sync {
 
 pub struct SidecarRefs {
     exe: PathBuf,
-    license_key: String,
     proc: Mutex<Option<(Child, ChildStdin, BufReader<ChildStdout>)>>,
     next_id: std::sync::atomic::AtomicU64,
 }
@@ -53,10 +52,8 @@ struct SidecarResponse {
 }
 
 impl SidecarRefs {
-    /// `license_key` is the team's Document Manager key, passed to the
-    /// sidecar through its environment (never on the command line).
-    pub fn new(exe: PathBuf, license_key: String) -> Self {
-        Self { exe, license_key, proc: Mutex::new(None), next_id: Default::default() }
+    pub fn new(exe: PathBuf) -> Self {
+        Self { exe, proc: Mutex::new(None), next_id: Default::default() }
     }
 
     /// Check the helper starts and answers; returns its version.
@@ -70,7 +67,6 @@ impl SidecarRefs {
         let mut guard = self.proc.lock().await;
         if guard.is_none() {
             let mut child = Command::new(&self.exe)
-                .env("CADSYNC_SWDM_KEY", &self.license_key)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::inherit())

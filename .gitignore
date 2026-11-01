@@ -30,7 +30,7 @@ sidecar/**/obj/
 # local tooling
 .claude-flow/
 
-# Published SwRefs sidecar (scripts/publish-swrefs.ps1); embeds the SolidWorks interop DLL
+# Published SwRefs sidecar (scripts/publish-swrefs.ps1)
 src-tauri/binaries/
 
 # Google OAuth client (baked in at build time; never commit)

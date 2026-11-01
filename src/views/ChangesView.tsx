@@ -181,7 +181,7 @@ export function ChangesView({
         <div className="review">
           {!preview.refsChecked && (
             <p className="notice notice-warn">
-              References weren't checked because the Document Manager key or SwRefs helper isn't set up. Parts that
+              References weren't checked because reference checking is turned off or isn't available on this computer. Parts that
               assemblies depend on won't be added automatically.
             </p>
           )}

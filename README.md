@@ -7,7 +7,7 @@ SolidWorks + Google Drive file sharing for FRC teams, built to fix what went wro
 | Slow loading | A local SQLite index of your CAD folder (a whole shared drive, or just one folder inside it), updated incrementally from Drive's change feed. Browsing never waits on the network. |
 | Crashes | Drive names (`/`, emoji, `CON`, duplicates, trailing dots) are mapped to safe Windows names; sync runs in the background with a crash-safe journal. |
 | Overwrites and conflicts | Check-out locks (Drive content restriction plus lock properties), and read-only local files for anything you haven't checked out. |
-| Broken mates | Atomic check-ins: an assembly and its changed parts arrive together or not at all. References are read with the SolidWorks Document Manager, and check-ins are blocked for missing files, files outside the vault, and duplicate names. |
+| Broken mates | Atomic check-ins: an assembly and its changed parts arrive together or not at all. References are read by asking SolidWorks itself, and check-ins are blocked for missing files, files outside the vault, and duplicate names. |
 
 ## Layout
 
@@ -18,8 +18,8 @@ SolidWorks + Google Drive file sharing for FRC teams, built to fix what went wro
   - `refs.rs`: SwRefs client and pre-check-in validation
   - `app/`: Tauri commands, config, background poller
 - `src/`: React UI
-- `sidecar/`: SwRefs (C#), which reads SolidWorks references with the Document Manager API
-- `docs/SETUP.md`: one-time team setup (Google OAuth client, CAD folder, license key)
+- `sidecar/`: SwRefs (C#), which reads SolidWorks references through the SolidWorks API
+- `docs/SETUP.md`: one-time team setup (Google OAuth client, CAD folder)
 - `docs/TESTING.md`: step-by-step Windows test plan with two PCs, and a results table to fill in
 
 ## Develop
@@ -45,20 +45,13 @@ dotnet test sidecar/SwRefs.Tests
 
 ## Build the Windows installer
 
-Build on a Windows x64 machine with SolidWorks installed (the SwRefs build needs its Document
-Manager interop DLL).
+Build on a Windows x64 machine. SolidWorks isn't needed to build; it only has to be installed on
+the PCs that run Permafrost.
 
 1. Install Node.js with pnpm, Rust (MSVC toolchain, the `rustup` default on Windows), the
    Microsoft C++ Build Tools and WebView2 ([Tauri prerequisites](https://tauri.app/start/prerequisites/)),
    and the .NET 8 SDK.
-2. If SolidWorks is not in the default location, point `SWDM_INTEROP_PATH` at
-   `SolidWorks.Interop.swdocumentmgr.dll` (see [sidecar/README.md](sidecar/README.md)):
-
-   ```powershell
-   $env:SWDM_INTEROP_PATH = "D:\SOLIDWORKS\api\redist\SolidWorks.Interop.swdocumentmgr.dll"
-   ```
-
-3. Build:
+2. Build:
 
    ```powershell
    pnpm install
@@ -72,13 +65,10 @@ On Windows, `pnpm tauri build` first runs `pnpm sidecar` (set in `src-tauri/taur
 which runs [scripts/publish-swrefs.ps1](scripts/publish-swrefs.ps1). That publishes SwRefs as a
 self-contained single-file `win-x64` exe to `src-tauri/binaries/SwRefs-x86_64-pc-windows-msvc.exe`,
 and Tauri bundles it (`externalBin`) as `SwRefs.exe` next to `permafrost.exe`, which is where the app
-looks for it. It fails if the interop DLL can't be found, so an installer can't ship without the
-real reader. The Document Manager license key is not bundled; each team sets it up as described
-in `docs/SETUP.md`.
+looks for it.
 
 Every Rust build on Windows (`pnpm tauri dev`, `cargo test`) needs that file to exist, so on a
-Windows dev machine run `pnpm sidecar` once first. Without SolidWorks, use
-`pnpm sidecar -AllowNoInterop`. That build only answers `refs` in fake mode.
+Windows dev machine run `pnpm sidecar` once first.
 
 macOS and Linux builds don't bundle SwRefs. The Windows-only settings are in
 `tauri.windows.conf.json`.

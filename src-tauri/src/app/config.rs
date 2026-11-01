@@ -1,7 +1,6 @@
 //! Per-computer settings, stored as JSON in the app config folder. Users never
 //! edit these by hand: the drive is picked after sign-in, the vault folder has
-//! a default, the Google client is built in, and the Document Manager key is a
-//! team setting on the shared drive. `oauth` and `swdm_key` are overrides only.
+//! a default, and the Google client is built in. `oauth` is an override only.
 
 use std::path::{Path, PathBuf};
 
@@ -20,9 +19,10 @@ pub struct AppConfig {
     pub root: Option<PathBuf>,
     /// Path to SwRefs.exe; defaults to the bundled sidecar.
     pub sidecar_path: Option<PathBuf>,
-    /// Local override for the Document Manager key. Normally the key comes
-    /// from the team settings on the shared drive (see app/team.rs).
-    pub swdm_key: Option<String>,
+    /// The user turned SolidWorks reference checking off on this computer. Stored inverted so
+    /// that configs written before this setting existed keep it on.
+    #[serde(default)]
+    pub refs_disabled: bool,
 }
 
 /// Drive ids are letters, digits, `-` and `_`.
@@ -131,5 +131,14 @@ mod tests {
         let back = AppConfig::load(&p);
         assert_eq!(back.folder_id.as_deref(), Some("0Abc"));
         assert!(AppConfig::load(&dir.path().join("missing.json")).folder_id.is_none());
+    }
+
+    #[test]
+    fn reference_checking_is_on_unless_disabled() {
+        assert!(!AppConfig::default().refs_disabled);
+        let old: AppConfig = serde_json::from_str(r#"{"folderId":"0Abc"}"#).unwrap();
+        assert!(!old.refs_disabled);
+        let off: AppConfig = serde_json::from_str(r#"{"refsDisabled":true}"#).unwrap();
+        assert!(off.refs_disabled);
     }
 }

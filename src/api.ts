@@ -42,6 +42,7 @@ export interface Status {
   fileCount: number;
   pendingCheckIns: number;
   refsAvailable: boolean;
+  refsEnabled: boolean;
 }
 
 export interface OAuthClient {
@@ -54,7 +55,6 @@ export interface AppConfig {
   folderId: string | null;
   root: string | null;
   sidecarPath: string | null;
-  swdmKey: string | null;
 }
 
 export interface Location {
@@ -66,10 +66,6 @@ export interface Location {
 export interface BrowseFolder {
   id: string;
   name: string;
-}
-
-export interface TeamSettings {
-  swdmKey?: string | null;
 }
 
 export type Deferred =
@@ -120,6 +116,7 @@ export interface Manifest {
 
 export const api = {
   status: () => invoke<Status>("get_status"),
+  setRefsEnabled: (enabled: boolean) => invoke<void>("set_refs_enabled", { enabled }),
   getConfig: () => invoke<AppConfig>("get_config"),
   saveConfig: (config: AppConfig) => invoke<void>("save_config", { config }),
   signIn: () => invoke<void>("sign_in"),
@@ -127,8 +124,6 @@ export const api = {
   browseFolders: (parentId: string) => invoke<BrowseFolder[]>("browse_folders", { parentId }),
   chooseFolder: (input: string) => invoke<void>("choose_folder", { input }),
   switchDrive: () => invoke<void>("switch_drive"),
-  getTeamSettings: () => invoke<TeamSettings>("get_team_settings"),
-  saveTeamSettings: (settings: TeamSettings) => invoke<void>("save_team_settings", { settings }),
   setVaultFolder: (root: string) => invoke<void>("set_vault_folder", { root }),
   signOut: () => invoke<void>("sign_out"),
   startDemo: () => invoke<void>("start_demo"),

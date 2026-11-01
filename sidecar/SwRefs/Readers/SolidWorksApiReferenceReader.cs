@@ -1,0 +1,99 @@
+using SwRefs.Protocol;
+
+namespace SwRefs.Readers;
+
+/// <summary>A connection to SolidWorks' own automation API.</summary>
+public interface ISolidWorksSession : IDisposable
+{
+    /// <summary>
+    /// <c>ISldWorks.GetDocumentDependencies2(path, traverse: false, search: false, addReadOnlyInfo: false)</c>:
+    /// the file's direct references, as the raw array SolidWorks returns.
+    /// </summary>
+    object? GetDocumentDependencies(string path);
+}
+
+/// <summary>
+/// Reads references by asking a running (or hidden, freshly started) SolidWorks. Needs no
+/// Document Manager key, but SolidWorks must be installed on this PC. SolidWorks is only contacted
+/// on the first <c>refs</c> request, so <c>ping</c> works on machines without it.
+/// </summary>
+public sealed class SolidWorksApiReferenceReader(Func<ISolidWorksSession> connect, TextWriter log) : IReferenceReader
+{
+    // RPC_E_CALL_REJECTED and RPC_E_SERVERCALL_RETRYLATER: SolidWorks is busy (loading, rebuilding).
+    private static readonly int[] BusyHResults = [unchecked((int)0x80010001), unchecked((int)0x8001010A)];
+    private const int BusyRetries = 5;
+    private static readonly TimeSpan BusyDelay = TimeSpan.FromMilliseconds(500);
+
+    private ISolidWorksSession? _session;
+
+    public string Name => "solidworks";
+
+    public IReadOnlyList<RefEntry> GetReferences(string path)
+    {
+        if (!File.Exists(path))
+            throw new ReferenceReaderException(ErrorCodes.NotFound, $"file not found: {path}");
+
+        var raw = Call(path);
+        return ParseDependencies(raw, File.Exists);
+    }
+
+    public void Dispose()
+    {
+        _session?.Dispose();
+        _session = null;
+    }
+
+    /// <summary>
+    /// Turns SolidWorks' flat array of (name, full path) pairs into references. A pair with no
+    /// path falls back to its name. Names containing '^' are virtual components.
+    /// </summary>
+    public static IReadOnlyList<RefEntry> ParseDependencies(object? raw, Func<string, bool> fileExists)
+    {
+        var items = raw switch
+        {
+            string[] s => s,
+            object[] o => o.Select(x => x as string ?? "").ToArray(),
+            _ => [],
+        };
+
+        var refs = new List<RefEntry>(items.Length / 2);
+        for (var i = 0; i + 1 < items.Length; i += 2)
+        {
+            var path = string.IsNullOrWhiteSpace(items[i + 1]) ? items[i] : items[i + 1];
+            if (string.IsNullOrWhiteSpace(path))
+                continue;
+            var isVirtual = PathRules.FileName(path).Contains('^');
+            refs.Add(new RefEntry(path, !isVirtual && fileExists(path), isVirtual));
+        }
+        return refs;
+    }
+
+    private object? Call(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                _session ??= connect();
+                return _session.GetDocumentDependencies(path);
+            }
+            catch (ReferenceReaderException)
+            {
+                throw;
+            }
+            catch (System.Runtime.InteropServices.COMException e) when (BusyHResults.Contains(e.HResult) && attempt < BusyRetries)
+            {
+                Thread.Sleep(BusyDelay);
+            }
+            catch (System.Runtime.InteropServices.COMException e)
+            {
+                // SolidWorks closed or crashed since the last request: reconnect on the next one.
+                log.WriteLine($"swrefs: SolidWorks call failed: 0x{e.HResult:X8} {e.Message}");
+                _session?.Dispose();
+                _session = null;
+                throw new ReferenceReaderException(ErrorCodes.OpenFailed,
+                    $"SolidWorks could not read {path} (0x{e.HResult:X8}); is it busy or closed? Try again.");
+            }
+        }
+    }
+}

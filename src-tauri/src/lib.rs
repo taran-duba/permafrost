@@ -36,6 +36,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             app::commands::get_status,
+            app::commands::set_refs_enabled,
             app::commands::get_config,
             app::commands::save_config,
             app::commands::sign_in,
@@ -57,8 +58,6 @@ pub fn run() {
             app::commands::browse_folders,
             app::commands::choose_folder,
             app::commands::switch_drive,
-            app::commands::get_team_settings,
-            app::commands::save_team_settings,
             app::commands::set_vault_folder,
             app::commands::open_logs,
             app::commands::take_new_crash_report,

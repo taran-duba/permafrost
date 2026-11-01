@@ -14,8 +14,7 @@ order, and fill in the results table at the end.
 - **Two Google accounts**, **Alex** on PC A and **Blair** on PC B. Both need to be members of the
   test shared drive with **Content manager** access. Name the drive **Test Drive** so the paths
   in this guide (`C:\CAD\Test Drive`) match.
-- The Google client file saved as `src-tauri/google-oauth.json` before building, and the
-  **Document Manager key** (see [SETUP.md](SETUP.md)).
+- The Google client file saved as `src-tauri/google-oauth.json` before building.
 - A small test assembly with **mates**: an assembly plus 2–3 parts, all in one folder.
   Something like a plate, a shaft and a gear with concentric and coincident mates is fine.
 
@@ -32,32 +31,36 @@ order, and fill in the results table at the end.
    dotnet test sidecar/SwRefs.Tests
    ```
 
-   `pnpm sidecar` builds the SwRefs helper with the real SolidWorks reader, and fails if it
-   can't find SolidWorks' interop DLL. Set `SWDM_INTEROP_PATH` as described in the README if
-   SolidWorks isn't installed in the default location.
+   `pnpm sidecar` builds the SwRefs helper that the app and the tests below use.
 
 **Expected:** every test passes. These tests have never run on Windows, so a failure that only
 happens on Windows is an important result. Copy the full output into your report.
 
 ## Part 2: Reference helper against a real assembly (PC A)
 
-This checks that the Document Manager key works and that SwRefs reads real SolidWorks files.
+This checks that SwRefs reads real SolidWorks files through SolidWorks. It has not been run
+against real SolidWorks yet, so write down what happens.
 
 1. Copy the test assembly and its parts to a folder, e.g. `C:\SwRefsTest\`.
-2. Run:
+2. Run it once with SolidWorks already open, then once with SolidWorks closed:
 
    ```powershell
-   $env:CADSYNC_SWDM_KEY = "<the Document Manager key>"
    '{"id":"1","op":"ping"}' | .\src-tauri\binaries\SwRefs-x86_64-pc-windows-msvc.exe
    '{"id":"2","op":"refs","path":"C:\\SwRefsTest\\TestAssembly.SLDASM"}' | .\src-tauri\binaries\SwRefs-x86_64-pc-windows-msvc.exe
    ```
 
 **Expected:**
-- [ ] `ping` returns `"ok":true` with a version.
-- [ ] `refs` returns `"ok":true` with one entry per part. Each `path` is a full path to a part,
-  and `exists` is `true`.
-- [ ] The list matches what SolidWorks shows for the assembly under **File › Find References**.
-- [ ] With a wrong key, `refs` returns `"code":"NO_LICENSE"`.
+- [ ] `ping` returns `"ok":true` with a version, even with SolidWorks closed.
+- [ ] SolidWorks open: `refs` answers `"ok":true` in a few seconds, one entry per part. Each `path`
+  is a full path to a part, `exists` is `true`, and the list matches **File › Find References**.
+  SolidWorks stays open.
+- [ ] SolidWorks closed: the first `refs` takes up to a minute, answers the same list, and no
+  `sldworks.exe` is left in Task Manager afterwards.
+- [ ] Add a part that doesn't exist on disk to the assembly's references (delete it after saving):
+  it comes back with `"exists":false` and the path stored in the assembly, not a path SolidWorks
+  searched for. **If it comes back with a different path, tell me: the `GetDocumentDependencies2`
+  search flag needs flipping.**
+- [ ] A virtual component (if the assembly has one) comes back with `"isVirtual":true`.
 
 ## Part 3: Set up both PCs
 
@@ -76,19 +79,15 @@ On **both** PCs:
 2. Click **Sign in with Google**, sign in as Alex (PC A) or Blair (PC B), accept the
    "unverified app" warning, and allow Drive access.
 3. Pick the **test** folder: browse to it (or paste a link) and click **Use this folder**.
-4. **PC A only:** in **Settings › SolidWorks reference checking**, paste the Document Manager
-   key and click **Save**.
-5. In **Vault**, tick **Get** on the top-level folder.
+4. In **Vault**, tick **Get** on the top-level folder.
 
 **Expected:**
 - [ ] The browser opens Google sign-in. Afterwards the app shows your shared drives, My Drive and
   Shared with me. Browsing into a folder shows its subfolders, and "Use" opens it. The top bar
   then shows the folder name and your email.
 - [ ] The vault folder is `C:\CAD\<folder name>` on both PCs (Settings › Advanced).
-- [ ] After PC A saves the key, PC B's Settings shows "Saved for the team" without anyone
-  typing it on PC B.
-- [ ] The sidebar does **not** show "Reference checking is off". If it does, the key or SwRefs
-  isn't set up.
+- [ ] The sidebar does **not** show "Reference checking is off". If it does, SwRefs isn't next
+  to the app.
 - [ ] After a sync (click **Sync now**, or wait 15 s), files appear under `C:\CAD\Test Drive`.
 - [ ] Files you haven't checked out are **read-only**: right-click › Properties shows
   *Read-only* ticked.
@@ -263,7 +262,7 @@ Then sync.
 - [ ] After step 2 the part disappears on both PCs. It's in the shared drive's **Trash** on the
   Drive website, and PC A's copy is in the app's trash folder.
 - [ ] In step 3, Permafrost warns "… is used by TestAssembly.SLDASM" before deleting. This only works
-  if that assembly has been checked in from a PC with the SolidWorks key set.
+  if that assembly's references were read when it was checked in.
 
 ### 6g2. A folder inside a bigger drive
 

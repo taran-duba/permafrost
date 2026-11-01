@@ -25,17 +25,6 @@ public class ReaderSetupTests
         Assert.Contains("could not be loaded", log.ToString());
     }
 
-#if !SWDM
-    [Fact]
-    public void WithoutInterop_RefsReportUnsupported()
-    {
-        using var reader = Program.CreateReader(Env((Program.KeyEnvVar, "not-a-real-key")), TextWriter.Null);
-        var handler = new RequestHandler(reader, TextWriter.Null);
-
-        AssertError(handler.Handle(new { id = "r", op = "refs", path = @"C:\a.SLDASM" }), "r", ErrorCodes.Unsupported);
-    }
-#endif
-
     [Theory]
     [InlineData("[]")]
     [InlineData("{ \"C:\\\\a.SLDASM\": 5 }")]
