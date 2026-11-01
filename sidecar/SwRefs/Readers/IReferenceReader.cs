@@ -9,7 +9,7 @@ public sealed record RefEntry(string Path, bool Exists, bool IsVirtual);
 /// <summary>Reads the direct (one-level) external references of a SolidWorks file.</summary>
 public interface IReferenceReader : IDisposable
 {
-    /// <summary>Short name for logs, e.g. "swdm" or "fake".</summary>
+    /// <summary>Short name for logs, e.g. "solidworks" or "fake".</summary>
     string Name { get; }
 
     /// <summary>

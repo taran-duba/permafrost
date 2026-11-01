@@ -164,8 +164,10 @@ export default function App() {
         ))}
         {signedIn && !status?.refsAvailable && (
           <p className="nav-note">
-            Reference checking is off, so check-ins can't add an assembly's parts for you. Add the team's
-            SolidWorks key in Settings (on Windows).
+            Reference checking is off, so check-ins can't add an assembly's parts for you.{" "}
+            {status?.refsEnabled === false
+              ? "You turned it off in Settings."
+              : "It runs on Windows with SolidWorks installed."}
           </p>
         )}
       </nav>

@@ -106,7 +106,7 @@ async fn run(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
     let cfg = state.config.read().await.clone();
     match super::commands::sidecar_path(&cfg).filter(|p| p.exists()) {
         Some(exe) => {
-            let refs = SidecarRefs::new(exe.clone(), String::new());
+            let refs = SidecarRefs::new(exe.clone());
             let version = tokio::time::timeout(SIDECAR_TIMEOUT, refs.ping())
                 .await
                 .map_err(|_| format!("SwRefs at {} didn't answer", exe.display()))?

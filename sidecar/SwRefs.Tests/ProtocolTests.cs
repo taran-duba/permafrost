@@ -105,7 +105,7 @@ public class ProtocolTests
 
     [Theory]
     [InlineData(@"C:\Vault\Corrupt.SLDASM", ErrorCodes.OpenFailed)]
-    [InlineData(@"C:\Vault\Locked.SLDPRT", ErrorCodes.NoLicense)]
+    [InlineData(@"C:\Vault\Locked.SLDPRT", ErrorCodes.Unsupported)]
     public void Refs_ReaderErrors_PassThroughTheirCode(string path, string code)
     {
         var r = _handler.Handle(new { id = "e", op = "refs", path });

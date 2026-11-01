@@ -16,5 +16,5 @@
     { "path": "C:\\Vault\\Arm\\Shoulder.SLDPRT", "exists": true }
   ],
   "C:\\Vault\\Corrupt.SLDASM": { "error": "OPEN_FAILED", "message": "could not open C:\\Vault\\Corrupt.SLDASM (swDmDocumentOpenErrorFail)" },
-  "C:\\Vault\\Locked.SLDPRT": { "error": "NO_LICENSE", "message": "the Document Manager rejected the license key" }
+  "C:\\Vault\\Locked.SLDPRT": { "error": "UNSUPPORTED", "message": "SolidWorks is not installed on this computer" }
 }

@@ -43,12 +43,13 @@ For a desktop app the "secret" isn't really secret; Google's sign-in protects it
   higher. Permafrost creates a hidden `.permafrost/` folder there for check-in records and team
   settings. Don't delete it. (Drives set up when the app was called cadsync have a `.cadsync/`
   folder instead; Permafrost keeps using it.)
-- **SolidWorks key:** request a Document Manager key from the SolidWorks Customer Portal (API
-  Support › Document Manager key), or through your reseller. FRC sponsorship licenses usually
-  qualify. Then in Permafrost go to **Settings › SolidWorks reference checking**, paste it, and click
-  **Save**. It's stored in the shared drive, so every member's app picks it up automatically.
-  Without it, Permafrost still syncs and locks files, but it can't add an assembly's parts to a
-  check-in automatically or catch broken references.
+- **Reference checking:** Permafrost reads which parts each assembly uses so check-ins can add
+  them and catch broken references. It asks SolidWorks itself, so there's nothing to set up, but
+  SolidWorks must be installed on each PC that checks files in. If SolidWorks isn't open,
+  Permafrost starts it in the background (the first check-in review can take a minute) and closes
+  it afterwards. No license key is involved. It's on by default; untick **Settings › SolidWorks
+  reference checking** on a PC to turn it off there (check-ins then won't add an assembly's parts
+  automatically).
 
 ## Good to know
 

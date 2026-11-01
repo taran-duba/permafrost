@@ -8,7 +8,6 @@ pub mod config;
 mod demo;
 pub mod logging;
 pub mod smoke;
-pub mod team;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -37,7 +36,6 @@ pub struct AppState {
     pub account: RwLock<Option<String>>,
     pub vault: RwLock<Option<Arc<AppVault>>>,
     pub folder_name: RwLock<Option<String>>,
-    pub team: team::TeamCache,
     pub config: RwLock<AppConfig>,
     pub config_path: PathBuf,
     pub data_dir: PathBuf,
@@ -86,7 +84,6 @@ impl AppState {
             account: RwLock::new(None),
             vault: RwLock::new(None),
             folder_name: RwLock::new(None),
-            team: Default::default(),
             config: RwLock::new(AppConfig::load(&config_path)),
             config_path,
             data_dir,
@@ -185,7 +182,6 @@ impl AppState {
         *self.config.write().await = cfg;
         *self.vault.write().await = Some(Arc::new(vault));
         *self.folder_name.write().await = Some(name);
-        self.team.clear().await;
         self.demo.store(false, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
@@ -214,7 +210,6 @@ impl AppState {
         *self.account.write().await = None;
         *self.vault.write().await = None;
         *self.folder_name.write().await = None;
-        self.team.clear().await;
         self.demo.store(false, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
@@ -225,7 +220,6 @@ impl AppState {
         *self.account.write().await = Some(vault.me.clone());
         *self.vault.write().await = Some(Arc::new(vault));
         *self.folder_name.write().await = Some("Demo Team Drive".into());
-        self.team.clear().await;
         self.demo.store(true, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }

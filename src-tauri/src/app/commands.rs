@@ -8,7 +8,6 @@ use tauri_plugin_opener::OpenerExt;
 
 use super::config::AppConfig;
 use super::{AppState, AppVault};
-use super::team::TeamSettings;
 use crate::drive::auth::Auth;
 use crate::drive::http::BrowseFolder;
 use crate::drive::{props, LockInfo, RemoteFile};
@@ -44,6 +43,8 @@ pub struct Status {
     file_count: u64,
     pending_check_ins: usize,
     refs_available: bool,
+    /// Reference checking is switched on in Settings (it may still be unavailable).
+    refs_enabled: bool,
 }
 
 #[derive(Serialize)]
@@ -119,11 +120,8 @@ fn safe_rel(p: &Path) -> Result<PathBuf> {
 pub async fn get_status(state: State<'_, AppState>) -> Result<Status> {
     let cfg = state.config.read().await.clone();
     let vault = state.vault.read().await.clone();
-    let key = match &vault {
-        Some(v) => swdm_key(&state, v).await,
-        None => None,
-    };
-    let refs_available = sidecar_path(&cfg).is_some_and(|p| p.exists()) && key.is_some();
+    let refs_enabled = !cfg.refs_disabled;
+    let refs_available = refs_enabled && sidecar_path(&cfg).is_some_and(|p| p.exists());
     Ok(Status {
         sign_in_available: state.oauth_client().await.is_some(),
         account: state.account.read().await.clone(),
@@ -145,13 +143,8 @@ pub async fn get_status(state: State<'_, AppState>) -> Result<Status> {
             None => 0,
         },
         refs_available,
+        refs_enabled,
     })
-}
-
-/// The Document Manager key: the team's (from the shared drive), else a local override.
-async fn swdm_key(state: &AppState, v: &AppVault) -> Option<String> {
-    let team = state.team.load(v).await.unwrap_or_default().swdm_key;
-    team.or(state.config.read().await.swdm_key.clone()).filter(|k| !k.trim().is_empty())
 }
 
 /// The UI calls this once it has rendered; the start-up smoke test waits for it.
@@ -171,6 +164,14 @@ pub async fn save_config(state: State<'_, AppState>, config: AppConfig) -> Resul
     config.save(&state.config_path)?;
     *state.config.write().await = config;
     Ok(())
+}
+
+/// Turn SolidWorks reference checking on or off for this computer.
+#[tauri::command]
+pub async fn set_refs_enabled(state: State<'_, AppState>, enabled: bool) -> Result<()> {
+    let mut cfg = state.config.write().await;
+    cfg.refs_disabled = !enabled;
+    cfg.save(&state.config_path)
 }
 
 /// Sign in with Google in the browser. If a shared drive was picked before,
@@ -264,18 +265,6 @@ pub async fn start_demo(app: AppHandle, state: State<'_, AppState>) -> Result<()
     state.open_demo().await?;
     let _ = app.emit("vault-changed", ());
     Ok(())
-}
-
-#[tauri::command]
-pub async fn get_team_settings(state: State<'_, AppState>) -> Result<TeamSettings> {
-    let v = state.vault().await?;
-    state.team.load(&v).await
-}
-
-#[tauri::command]
-pub async fn save_team_settings(state: State<'_, AppState>, settings: TeamSettings) -> Result<()> {
-    let v = state.vault().await?;
-    state.team.save(&v, &settings).await
 }
 
 /// Advanced: move the local vault folder (must match on every computer).
@@ -446,9 +435,9 @@ async fn plan_check_in(state: &AppState, files: &[String], new_files: &[PathBuf]
     let v = state.vault().await?;
     let new_files = new_files.iter().map(|p| safe_rel(p)).collect::<Result<Vec<_>>>()?;
     let cfg = state.config.read().await.clone();
-    match (sidecar_path(&cfg).filter(|p| p.exists()), swdm_key(state, &v).await) {
-        (Some(exe), Some(key)) => {
-            let reader = SidecarRefs::new(exe, key);
+    match sidecar_path(&cfg).filter(|p| p.exists()).filter(|_| !cfg.refs_disabled) {
+        Some(exe) => {
+            let reader = SidecarRefs::new(exe);
             Ok(CheckInPreview { plan: v.prepare_check_in(&reader, files, &new_files).await?, refs_checked: true })
         }
         _ => {

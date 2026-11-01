@@ -31,18 +31,6 @@ public class ProcessTests
         Assert.Contains("reader: fake", stderr);
     }
 
-    [Fact]
-    public async Task Process_NeverLogsTheLicenseKey()
-    {
-        const string key = "secret-test-key-1234567890";
-        var (stdout, stderr, _) = await RunSidecar(
-            ["{\"id\":\"1\",\"op\":\"refs\",\"path\":\"C:\\\\Vault\\\\Robot.SLDASM\"}"],
-            (Program.KeyEnvVar, key));
-
-        Assert.DoesNotContain(key, stdout);
-        Assert.DoesNotContain(key, stderr);
-    }
-
     private static async Task<(string Stdout, string Stderr, int ExitCode)> RunSidecar(
         string[] requests, params (string Key, string Value)[] env)
     {
@@ -58,7 +46,6 @@ public class ProcessTests
         };
         psi.ArgumentList.Add(dll);
         psi.Environment.Remove(Program.FakeEnvVar);
-        psi.Environment.Remove(Program.KeyEnvVar);
         foreach (var (k, v) in env)
             psi.Environment[k] = v;
 

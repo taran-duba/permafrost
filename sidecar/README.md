@@ -1,8 +1,9 @@
 # SwRefs sidecar
 
 A small .NET 8 console app that Permafrost's Rust core starts as a child process to find out which
-files a SolidWorks part, assembly or drawing references. It uses the SolidWorks Document Manager
-API, so SolidWorks does not need to be running.
+files a SolidWorks part, assembly or drawing references. It asks SolidWorks itself through its
+normal automation API (`ISldWorks.GetDocumentDependencies2`), so it needs no license key and no
+interop DLL, but SolidWorks must be installed on the PC.
 
 - `SwRefs/` – the app
 - `SwRefs.Tests/` – xUnit tests (protocol, fake reader, end-to-end process run)
@@ -31,54 +32,31 @@ Virtual components are included with `isVirtual: true`; they live inside the ass
 | code | when |
 | --- | --- |
 | `BAD_REQUEST` | invalid JSON, not an object, missing/non-string `id` (response `id` is `null`), missing `op`, unknown `op`, missing or relative `path` |
-| `UNSUPPORTED` | not `.sldasm`/`.sldprt`/`.slddrw`, or this build has no Document Manager support |
+| `UNSUPPORTED` | not `.sldasm`/`.sldprt`/`.slddrw`, not running on Windows, or SolidWorks isn't installed |
 | `NOT_FOUND` | the file does not exist |
-| `NO_LICENSE` | `CADSYNC_SWDM_KEY` is missing or rejected |
-| `OPEN_FAILED` | the file exists but could not be read (damaged, newer SolidWorks version, …) |
+| `OPEN_FAILED` | the file exists but could not be read (damaged, newer SolidWorks version, SolidWorks busy or closed, …) |
 
 ## Environment variables
 
 | variable | purpose |
 | --- | --- |
-| `CADSYNC_SWDM_KEY` | Document Manager license key. Required for the real reader. |
-| `CADSYNC_SWREFS_FAKE` | Path to a JSON fixture. When set, the fake reader answers instead of the Document Manager. |
+| `CADSYNC_SWREFS_FAKE` | Path to a JSON fixture. When set, the fake reader answers instead of SolidWorks. |
 
-### The license key
+## How it talks to SolidWorks
 
-The Document Manager needs a license key, which SolidWorks subscription holders (FRC teams get
-SolidWorks through the sponsorship program) can request through the SolidWorks Customer Portal
-(API support / Document Manager key request) or their reseller. **Never commit the key or put it in source.** Give it to the
-sidecar through the environment, e.g. from the Rust side when spawning the process, or for a
-manual test:
+It connects to a running SolidWorks; if there isn't one it starts a hidden SolidWorks (the first
+`refs` can take a minute) and closes it when SwRefs exits. A SolidWorks you already had open is
+never closed. `ping` never contacts SolidWorks. If SolidWorks is busy, calls are retried for a few
+seconds; if it closes mid-session, the next request reconnects.
 
-```powershell
-$env:CADSYNC_SWDM_KEY = "<your key>"
-```
+If Permafrost is force-killed while it started SolidWorks, that hidden `sldworks.exe` stays
+running (the next check attaches to it); end it in Task Manager if you want it gone.
 
-The sidecar never logs the key.
-
-## Building on Windows with the real Document Manager
-
-1. Install the .NET 8 SDK.
-2. Find the interop DLL on a machine with SolidWorks installed. It is usually at
-   `C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist\SolidWorks.Interop.swdocumentmgr.dll`
-   (the Document Manager API also ships it if installed separately). It is not redistributable
-   on its own, so do not commit it.
-3. Build or publish with `SWDM_INTEROP_PATH` pointing at it:
-
-```powershell
-dotnet publish sidecar/SwRefs -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:SWDM_INTEROP_PATH="C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist\SolidWorks.Interop.swdocumentmgr.dll"
-```
-
-`SWDM_INTEROP_PATH` can also be set as an environment variable. When it is set, the build defines
-`SWDM` and compiles `Readers/SwdmReferenceReader.cs`; the build fails if the path does not exist.
-Without it, the app still builds (as on macOS) but `refs` answers `UNSUPPORTED` unless the fake
-reader is selected.
-
-The Document Manager is a 64-bit COM server registered by the SolidWorks install, so publish for
-`win-x64`. For the Tauri installer, `scripts/publish-swrefs.ps1` (`pnpm sidecar`) runs this
-publish and copies the result to `src-tauri/binaries/SwRefs-x86_64-pc-windows-msvc.exe`; see
-"Build the Windows installer" in the top-level README.
+The calls are late-bound COM, so the app builds on any machine with the .NET 8 SDK. Off Windows
+it answers `UNSUPPORTED`. For the Tauri installer, `scripts/publish-swrefs.ps1` (`pnpm sidecar`)
+publishes a self-contained single-file `win-x64` exe and copies it to
+`src-tauri/binaries/SwRefs-x86_64-pc-windows-msvc.exe`; see "Build the Windows installer" in the
+top-level README.
 
 ## Building and testing anywhere else (fake mode)
 

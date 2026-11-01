@@ -6,12 +6,10 @@ namespace SwRefs;
 
 public static class Program
 {
-    /// <summary>Path to a fake-reader fixture; when set, the Document Manager is not used.</summary>
+    /// <summary>Path to a fake-reader fixture; when set, SolidWorks is not used.</summary>
     public const string FakeEnvVar = "CADSYNC_SWREFS_FAKE";
-    /// <summary>SolidWorks Document Manager license key. Never hard-code or log it.</summary>
-    public const string KeyEnvVar = "CADSYNC_SWDM_KEY";
 
-    // The Document Manager is a COM server; an STA main thread matches how its samples call it.
+    // SolidWorks is a COM server; keep its calls on an STA thread.
     [STAThread]
     public static int Main()
     {
@@ -45,13 +43,10 @@ public static class Program
             }
         }
 
-#if SWDM
-        if (OperatingSystem.IsWindows())
-            return new SwdmReferenceReader(env(KeyEnvVar), log);
-        return new UnavailableReferenceReader(ErrorCodes.Unsupported, "the SolidWorks Document Manager only runs on Windows");
-#else
-        return new UnavailableReferenceReader(ErrorCodes.Unsupported,
-            $"this build has no SolidWorks Document Manager support; rebuild on Windows with SWDM_INTEROP_PATH set, or set {FakeEnvVar}");
-#endif
+        if (!OperatingSystem.IsWindows())
+            return new UnavailableReferenceReader(ErrorCodes.Unsupported, "reading SolidWorks files only works on Windows");
+
+        return new SolidWorksApiReferenceReader(
+            () => OperatingSystem.IsWindows() ? SolidWorksComSession.Connect(log) : throw new PlatformNotSupportedException(), log);
     }
 }

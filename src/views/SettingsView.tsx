@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api, errorText, Status } from "../api";
 import type { ToastApi } from "../Toasts";
-import { Spinner } from "../Spinner";
 
 export function SettingsView({
   status,
@@ -12,21 +11,9 @@ export function SettingsView({
   onChanged: () => void;
   toasts: ToastApi;
 }) {
-  const [key, setKey] = useState("");
-  const [keySaved, setKeySaved] = useState(false);
   const [folder, setFolder] = useState(status.root ?? "");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    api
-      .getTeamSettings()
-      .then((t) => {
-        setKey(t.swdmKey ?? "");
-        setKeySaved(!!t.swdmKey);
-      })
-      .catch(() => {});
-  }, [status.folderId]);
 
   const run = async (what: () => Promise<unknown>, done?: string) => {
     setBusy(true);
@@ -70,39 +57,26 @@ export function SettingsView({
         )}
       </div>
 
-      <div className="setting-block">
-        <div className="setting-label">SolidWorks reference checking</div>
-        <p className="muted small">
-          A Document Manager key (free from the SolidWorks Customer Portal) lets Permafrost see which parts each assembly
-          uses. Whoever sets it here sets it for the whole team; it's stored in the shared drive.
-        </p>
-        <div className="inline-form">
-          <input
-            type="password"
-            value={key}
-            placeholder={keySaved ? "Saved for the team" : "Paste the Document Manager key"}
-            onChange={(e) => setKey(e.target.value)}
-            aria-label="Document Manager key"
-          />
-          <button
-            className="btn"
-            disabled={busy || key.trim() === ""}
-            onClick={() =>
-              run(async () => {
-                await api.saveTeamSettings({ swdmKey: key.trim() });
-                setKeySaved(true);
-              }, "Saved for everyone on the team")
-            }
-          >
-            {busy && <Spinner size={12} />}
-            Save
-          </button>
+      <div className="setting-row">
+        <div>
+          <div className="setting-label">SolidWorks reference checking</div>
+          <div className="muted small">
+            Permafrost asks SolidWorks which parts each assembly uses, so SolidWorks must be installed on this PC. If it
+            isn't open, it starts in the background (the first check can take a minute).
+          </div>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={status.refsEnabled}
+              disabled={busy}
+              onChange={(e) => run(() => api.setRefsEnabled(e.target.checked))}
+            />
+            Check references with SolidWorks
+          </label>
+          {status.refsEnabled && !status.refsAvailable && (
+            <div className="small muted">Not available here: it runs on Windows with SolidWorks installed.</div>
+          )}
         </div>
-        {status.refsAvailable ? (
-          <p className="small ok-text">Reference checking is on.</p>
-        ) : keySaved ? (
-          <p className="small muted">Key saved. Reference checking runs on Windows with SolidWorks installed.</p>
-        ) : null}
       </div>
 
       <div className="setting-row">
