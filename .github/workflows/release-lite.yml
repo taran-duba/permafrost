@@ -1,0 +1,124 @@
+# Publishes a Permafrost Lite release: signed Windows and macOS installers plus the
+# latest.json manifest Lite's in-app updater reads.
+#
+#   1. Bump "version" in src-tauri/tauri.lite.conf.json.
+#   2. git tag lite-v<version> && git push origin lite-v<version>
+#
+# Lite releases are never marked "latest": Permafrost's updater reads
+# releases/latest/download/latest.json, and the website serves the latest release's
+# installers, so a Lite release must not take that spot. Instead, Lite's latest.json
+# is also copied to the rolling `lite-latest` pre-release, which is the endpoint in
+# tauri.lite.conf.json. Same signing key and secrets as release.yml.
+name: Release Lite
+
+on:
+  push:
+    tags: ["lite-v*"]
+
+concurrency:
+  group: release-lite-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            config: '{"bundle":{"createUpdaterArtifacts":true}}'
+          - os: macos-latest # Apple Silicon (arm64); ad-hoc signed, not notarized
+            config: '{"bundle":{"createUpdaterArtifacts":true,"macOS":{"signingIdentity":"-"}}}'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      # Lite bundles no sidecar, so the Rust build mustn't look for SwRefs.exe.
+      TAURI_CONFIG: '{"bundle":{"externalBin":[]}}'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the Lite version
+        shell: bash
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.lite.conf.json').version")
+          if [ "${GITHUB_REF_NAME}" != "lite-v${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} doesn't match version ${version} in src-tauri/tauri.lite.conf.json"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: lite
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tauri.lite.conf.json plus this platform's release settings, in one file.
+      - name: Write build config
+        shell: bash
+        env:
+          CI_CONFIG: ${{ matrix.config }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const merge = (a, b) => {
+              for (const [k, v] of Object.entries(b)) {
+                a[k] = v && typeof v === "object" && !Array.isArray(v) ? merge(a[k] ?? {}, v) : v;
+              }
+              return a;
+            };
+            const lite = JSON.parse(fs.readFileSync("src-tauri/tauri.lite.conf.json", "utf8"));
+            const out = merge(lite, JSON.parse(process.env.CI_CONFIG));
+            fs.writeFileSync(process.argv[1], JSON.stringify(out, null, 2));
+          ' "$RUNNER_TEMP/release-lite.conf.json"
+
+      - name: Build, sign and upload to a draft release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CADSYNC_GOOGLE_CLIENT_ID: ${{ secrets.CADSYNC_GOOGLE_CLIENT_ID }}
+          CADSYNC_GOOGLE_CLIENT_SECRET: ${{ secrets.CADSYNC_GOOGLE_CLIENT_SECRET }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Permafrost Lite ${{ github.ref_name }}
+          releaseDraft: true
+          uploadUpdaterJson: true
+          args: --config ${{ runner.temp }}/release-lite.conf.json --features lite
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish without taking the "latest" spot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
+
+      - name: Point Lite's updater at this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern latest.json --dir lite
+          if ! gh release view lite-latest --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create lite-latest --repo "$GITHUB_REPOSITORY" --prerelease --latest=false \
+              --title "Permafrost Lite updates" \
+              --notes "Holds latest.json for Permafrost Lite's in-app updater. Download installers from the lite-v* releases."
+          fi
+          gh release upload lite-latest lite/latest.json --repo "$GITHUB_REPOSITORY" --clobber

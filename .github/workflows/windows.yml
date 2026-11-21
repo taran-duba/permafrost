@@ -1,4 +1,4 @@
-# Builds permafrost on Windows, runs all tests, builds the installer, installs it,
+# Builds Permafrost and Permafrost Lite on Windows, runs all tests, builds the installer, installs it,
 # and checks the installed app really starts (window, UI, sync engine, SwRefs).
 name: Windows
 
@@ -137,6 +137,114 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: permafrost-windows-installers
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  # Permafrost Lite (the CacheCAD-style app, no locks): same core, built with the
+  # `lite` feature and tauri.lite.conf.json. No SwRefs in this build.
+  lite-build-and-smoke-test:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # Lite bundles no sidecar, so the Rust build mustn't look for SwRefs.exe.
+      TAURI_CONFIG: '{"bundle":{"externalBin":[]}}'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: lite
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rust tests (Lite)
+        run: cargo test --manifest-path src-tauri/Cargo.toml --features lite
+
+      - name: Build installer
+        env:
+          CADSYNC_GOOGLE_CLIENT_ID: ${{ secrets.CADSYNC_GOOGLE_CLIENT_ID }}
+          CADSYNC_GOOGLE_CLIENT_SECRET: ${{ secrets.CADSYNC_GOOGLE_CLIENT_SECRET }}
+        run: pnpm lite:bundle
+
+      - name: Install with the NSIS installer
+        run: |
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          if (-not $setup) { throw "no NSIS installer was built" }
+          Write-Host "Installing $($setup.Name)"
+          $p = Start-Process $setup.FullName -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Permafrost Lite", "$env:ProgramFiles\Permafrost Lite" -Filter permafrost-lite.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "permafrost-lite.exe not found after install" }
+          Write-Host "Installed to $(Split-Path $exe.FullName)"
+          if (Test-Path (Join-Path (Split-Path $exe.FullName) "SwRefs.exe")) { throw "Lite shouldn't bundle SwRefs.exe" }
+          "LITE_EXE=$($exe.FullName)" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - name: Start the installed app (smoke test)
+        env:
+          HAS_GOOGLE_SECRETS: ${{ secrets.CADSYNC_GOOGLE_CLIENT_ID != '' }}
+        run: |
+          $result = Join-Path $env:RUNNER_TEMP "smoke-lite.json"
+          $shot = Join-Path $env:RUNNER_TEMP "permafrost-lite-windows.png"
+          $env:CADSYNC_SMOKE = $result
+          if ($env:HAS_GOOGLE_SECRETS -eq "true") { $env:CADSYNC_SMOKE_REQUIRE_SIGNIN = "1" }
+          $env:CADSYNC_SMOKE_HOLD_SECS = "12"
+          $p = Start-Process $env:LITE_EXE -PassThru
+          $null = $p.Handle
+
+          Start-Sleep -Seconds 8
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save($shot, [System.Drawing.Imaging.ImageFormat]::Png)
+          } catch { Write-Warning "screenshot failed: $_" }
+
+          if (-not $p.WaitForExit(180000)) {
+            $p.Kill()
+            throw "permafrost-lite didn't exit within 3 minutes"
+          }
+          if (-not (Test-Path $result)) { throw "no smoke result written" }
+          Get-Content $result
+          if ($p.ExitCode -ne 0) { throw "smoke test failed (exit code $($p.ExitCode))" }
+          $json = Get-Content $result -Raw | ConvertFrom-Json
+          if (@($json.features).Count -lt 3) { throw "expected 3 Lite checks (upload, locks, download), got $(@($json.features).Count)" }
+          if ($json.uiStepsPassed -lt 8) { throw "the UI driver clicked through only $($json.uiStepsPassed) of 8 steps" }
+          Write-Host "Permafrost Lite started and passed the smoke test on Windows."
+
+      - name: Upload smoke test result and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-lite
+          path: |
+            ${{ runner.temp }}/smoke-lite.json
+            ${{ runner.temp }}/permafrost-lite-windows.png
+          if-no-files-found: ignore
+
+      - name: Upload installers
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: permafrost-lite-windows-installers
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi

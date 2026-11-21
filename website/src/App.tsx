@@ -4,6 +4,7 @@ import { Hero } from "./components/Hero";
 import { Story } from "./components/Story";
 import { SyncFlow } from "./components/SyncFlow";
 import { Features } from "./components/Features";
+import { Products } from "./components/Products";
 import { Download } from "./components/Download";
 import { Footer } from "./components/Footer";
 
@@ -22,6 +23,7 @@ export default function App() {
         <Story />
         <SyncFlow />
         <Features />
+        <Products />
         <Download />
       </main>
       <Footer />

@@ -6,6 +6,7 @@ pub mod localfs;
 pub mod locks;
 pub mod pull;
 pub mod push;
+mod push_checks;
 pub mod remove;
 pub mod restore;
 
@@ -39,6 +40,16 @@ pub struct Vault<D> {
     pub lock_verify_delay: Duration,
 }
 
+/// How long an uncommitted push may hold its files back from teammates.
+pub const PENDING_EXPIRY_HOURS: i64 = 24;
+
+/// Changeset ids are ULIDs, which carry their creation time.
+pub fn pending_abandoned(changeset: &str, now: chrono::DateTime<chrono::Utc>) -> bool {
+    let Ok(id) = ulid::Ulid::from_string(changeset) else { return false };
+    let age_ms = now.timestamp_millis() - id.timestamp_ms() as i64;
+    age_ms > PENDING_EXPIRY_HOURS * 3_600_000
+}
+
 /// A vault-relative path as shown to people: always `/`, on every OS.
 pub fn shown(p: &Path) -> String {
     p.to_string_lossy().replace('\\', "/")
@@ -68,6 +79,14 @@ impl<D: DriveApi> Vault<D> {
     /// Checked out by me, on this machine.
     pub fn i_hold_lock(&self, f: &RemoteFile) -> bool {
         f.lock().is_some_and(|l| l.owner == self.me && l.machine == self.machine)
+    }
+
+    /// Does this pending tag still hold the file back? Yes while its push is
+    /// uncommitted, unless the push is so old it was clearly abandoned (its PC
+    /// died mid-push): then the files are treated as ordinary edits instead of
+    /// being held back from everyone forever.
+    pub fn pending_blocks(&self, changeset: &str) -> Result<bool> {
+        Ok(!self.index.has_changeset(changeset)? && !pending_abandoned(changeset, chrono::Utc::now()))
     }
 
     pub async fn refresh(&self) -> Result<crawl::CrawlStats> {

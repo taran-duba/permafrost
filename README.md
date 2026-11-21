@@ -11,6 +11,40 @@ SolidWorks + Google Drive file sharing for FRC teams, built to fix what went wro
 | Renames break assemblies | **Rename** in Permafrost moves a file or folder and has SolidWorks repoint every assembly and drawing that uses it, all in one push. |
 | No way back | Every push is kept forever. **History** restores a file, or an assembly with its parts, to any earlier push. |
 
+## Permafrost Lite
+
+A second app built from this repo for teams that want CacheCAD's workflow: a project list, and
+**Upload Changes** / **Download Changes** panels where you tick files (New, Revision, Delete,
+Mismatch, Moved) and apply them. There are no check-outs. It runs on the same sync core, so it keeps
+Permafrost's reliability: staged, md5-checked downloads that apply all at once or not at all, local
+edits backed up before a download replaces them, journaled uploads that resume after a crash, and
+safe Windows names.
+
+- **Works alongside Permafrost on the same Drive folder.** Lite uploads are normal pushes (they show
+  in History and can be restored), and Lite never overwrites a file someone has checked out in
+  Permafrost.
+- **Conflicts:** a file changed on Drive since you last downloaded it shows as a Mismatch. Uploading
+  it is blocked unless you tick it and confirm Overwrite; the other version stays in Drive's
+  version history.
+- The code lives in `src-tauri/src/lite/` (planning, download, upload) and `src/lite/` (UI). The
+  app wiring is behind the `lite` Cargo feature, the Vite `lite` mode and
+  `src-tauri/tauri.lite.conf.json` (own name, bundle id, icon, sign-in and updater).
+
+```bash
+CADSYNC_DEMO=1 pnpm lite
+```
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml --features lite
+```
+
+```bash
+pnpm lite:bundle
+```
+
+Release it by bumping `version` in `src-tauri/tauri.lite.conf.json` and pushing a `lite-v<version>`
+tag ([release-lite.yml](.github/workflows/release-lite.yml)).
+
 ## Layout
 
 - `src-tauri/`: Rust core (Tauri v2)
@@ -111,7 +145,8 @@ the updater, so the first release with it must be installed manually.
 
 ## Not done yet
 
-- Not yet run by the team against real Google Drive and SolidWorks end to end. Work through
+- Not yet run by the team against real Google Drive and SolidWorks end to end. That goes for
+  Permafrost Lite too, including Lite and Permafrost users sharing one folder. Work through
   [docs/CADDER-TESTING.md](docs/CADDER-TESTING.md) (or [docs/TESTING.md](docs/TESTING.md)) on a
   test folder before the team relies on it. Reference rewriting for Rename uses SolidWorks'
   `ReplaceReferencedDocument`, which has only been tested against a fake.

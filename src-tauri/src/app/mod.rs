@@ -7,9 +7,12 @@ pub mod commands;
 pub mod config;
 pub mod file_ops;
 mod demo;
+#[cfg(feature = "lite")]
+pub mod lite_ops;
 pub mod logging;
 pub mod smoke;
 mod smoke_features;
+mod smoke_lite;
 pub mod team_ops;
 
 use std::path::PathBuf;
@@ -63,7 +66,7 @@ pub fn log_dir(app: &tauri::AppHandle) -> PathBuf {
     app.path()
         .app_log_dir()
         .or_else(|_| app.path().app_data_dir().map(|d| d.join("logs")))
-        .unwrap_or_else(|_| PathBuf::from("permafrost-logs"))
+        .unwrap_or_else(|_| PathBuf::from(if cfg!(feature = "lite") { "permafrost-lite-logs" } else { "permafrost-logs" }))
 }
 
 fn machine_name() -> String {
@@ -74,7 +77,10 @@ fn machine_name() -> String {
 
 impl AppState {
     pub fn new(app: &tauri::AppHandle) -> Self {
-        let data_dir = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from(".cadsync-data"));
+        let data_dir = app
+            .path()
+            .app_data_dir()
+            .unwrap_or_else(|_| PathBuf::from(if cfg!(feature = "lite") { ".permafrost-lite-data" } else { ".cadsync-data" }));
         let config_path = app
             .path()
             .app_config_dir()
@@ -308,6 +314,15 @@ impl AppState {
         if let Err(e) = vault.resume_pushes().await {
             tracing::warn!(%e, "could not resume an interrupted check-in yet");
         }
+        if cfg!(feature = "lite") {
+            // Lite never downloads by itself: it only keeps the index current so the
+            // Upload/Download counts are right, and the user applies changes.
+            vault.refresh().await?;
+            if let Err(e) = vault.load_team().await {
+                tracing::warn!(%e, "could not read the team settings; using the last copy");
+            }
+            return Ok(Default::default());
+        }
         vault.sync_down().await
     }
 }
@@ -381,6 +396,8 @@ mod tests {
         let state = AppState::with_paths(dir.path().join("data"), dir.path().join("config.json"));
         let drive = FakeDrive::new("alex@team.org");
         state.config.write().await.folder_id = Some(drive.drive_id.clone());
+        // Keep the vault folder in the temp dir, not the real default under the home folder.
+        state.config.write().await.root = Some(dir.path().join("vault"));
         *state.account.write().await = Some(Account { email: "alex@team.org".into(), name: "Alex Team".into() });
 
         let opened = tokio::time::timeout(

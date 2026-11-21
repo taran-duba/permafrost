@@ -74,6 +74,8 @@ export interface Status {
   isAdmin: boolean;
   /** Every project this PC has opened; the open one has `active` set. */
   projects: ProjectInfo[];
+  /** The folder project folders go in (Permafrost Lite's root folder). */
+  baseDir: string;
 }
 
 export interface OAuthClient {

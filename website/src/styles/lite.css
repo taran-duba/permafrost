@@ -1,0 +1,219 @@
+/* Permafrost Lite on the landing page: the hero product switch, the two-window hero
+   stage, and a scaled-down replica of the Lite window (src/lite/lite.css in the app). */
+
+/* ---- hero announcement and switch ---- */
+
+.hero-news {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.25s var(--spring), border-color 0.25s var(--spring);
+}
+.hero-news:hover { background: var(--accent-soft); border-color: var(--accent); }
+.hero-news-tag {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 650;
+  font-size: 12px;
+}
+.hero-news svg { color: var(--accent); }
+
+.product-switch {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 30px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.04);
+  width: min(560px, 100%);
+}
+.product-switch button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s var(--spring);
+}
+.product-switch button:hover { color: var(--text); }
+.product-switch button[aria-selected="true"] { color: var(--text); }
+.product-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.product-switch .ps-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: var(--panel-2);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), var(--shadow-md);
+  z-index: -1;
+}
+.product-switch .ps-name { font-family: var(--font-display); font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
+.product-switch .ps-sub { font-size: 13px; }
+.product-switch button { isolation: isolate; }
+
+/* ---- two windows on the hero stage ---- */
+
+.hero-pair {
+  position: relative;
+  padding-right: 14%;
+  padding-bottom: 9%;
+}
+.hero-pair .hero-back,
+.hero-pair .hero-front {
+  transition: opacity 0.45s var(--ease-out), filter 0.45s var(--ease-out);
+}
+.hero-pair .hero-front {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 54%;
+  z-index: 2;
+}
+.hero-pair .hero-back, .hero-pair .hero-front { cursor: pointer; }
+.hero-pair .dim { opacity: 0.5; filter: saturate(0.6); }
+.hero-pair .hero-front.dim { opacity: 0.72; }
+.hero-tag {
+  position: absolute;
+  z-index: 3;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.hero-tag.back { left: 18px; top: -14px; }
+.hero-tag.front { right: 18px; top: -14px; }
+.hero-tag.on { border-color: var(--accent); color: var(--accent); }
+
+@media (max-width: 760px) {
+  .hero-pair { padding: 0; display: grid; gap: 28px; }
+  .hero-pair .hero-front { position: relative; width: 100%; }
+  .hero-pair .dim { opacity: 1; filter: none; }
+  .hero-pair .hero-front.dim { opacity: 1; }
+}
+
+/* ---- Lite window replica ---- */
+
+.mock-lite { --m-font: 12.5px; background: #070d12; }
+.lite-mock-body {
+  display: grid;
+  grid-template-columns: 34% 1fr;
+  gap: 10px;
+  padding: 10px;
+  min-height: 300px;
+}
+.lite-mock-side { display: grid; grid-template-rows: auto auto 1fr auto; gap: 6px; }
+.lite-mock-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lite-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #d9e2e7;
+  color: #0b141b;
+  font-weight: 650;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: transform 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+}
+.lite-key.pressed { transform: scale(0.95); box-shadow: 0 0 0 3px var(--ring); }
+.lite-key-accent { background: var(--accent); color: var(--accent-text); }
+.lite-mock-projects { border: 1px solid var(--line-strong); padding: 3px; display: flex; flex-direction: column; gap: 1px; }
+.lite-mock-project { padding: 3px 6px; border-radius: 3px; font-size: 11.5px; }
+.lite-mock-project.on { background: var(--accent-soft); font-weight: 650; }
+.lite-mock-main { display: grid; grid-template-rows: auto 1fr; gap: 8px; min-width: 0; }
+.lite-mock-title { text-align: center; font-family: var(--font-display); font-size: 17px; font-weight: 500; padding: 4px 0; }
+.lite-mock-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 100%; }
+.lite-mock-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 6px;
+  text-align: center;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  min-height: 220px;
+}
+.lite-mock-count { align-self: center; font-family: var(--font-display); font-size: 34px; font-weight: 500; }
+.lite-mock-caption { color: var(--muted); font-size: 11px; }
+.lite-mock-list { border: 1px solid var(--line-strong); display: flex; flex-direction: column; min-height: 252px; }
+.lite-mock-listhead { display: flex; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.lite-mock-item { display: grid; grid-template-columns: 14px 16px 1fr; gap: 7px; align-items: start; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.lite-mock-item .mock-check { margin-top: 2px; }
+.lite-mock-name { display: flex; flex-direction: column; min-width: 0; }
+.lite-mock-sub { color: var(--muted); font-size: 10.5px; }
+.lite-mock-sub.warn { color: var(--warn); }
+.lite-kind {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 1px;
+}
+.lite-kind.new { background: var(--ok-bg); color: var(--ok); }
+.lite-kind.rev { background: var(--info-bg); color: var(--info); }
+.lite-kind.del { background: var(--bad-bg); color: var(--bad); }
+.lite-kind.mis { background: var(--warn-bg); color: var(--warn); }
+.lite-mock-foot { margin-top: auto; padding: 6px; display: flex; justify-content: flex-end; }
+
+/* ---- small "which app" tags on feature cards and story steps ---- */
+
+.app-tag {
+  display: inline-block;
+  width: fit-content;
+  align-self: flex-start;
+  margin-bottom: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  background: rgb(255 255 255 / 0.07);
+  color: var(--muted);
+}
+.app-tag.both { background: var(--accent-soft); color: var(--accent); }
+.app-tag.lite { background: color-mix(in srgb, #b8a6f5 18%, transparent); color: #cfc3fb; }
+
+.nav-new {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 10.5px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+/* A narrow Lite window drops the sidebar, so the two panels stay readable on phones. */
+@container (max-width: 480px) {
+  .lite-mock-body { grid-template-columns: 1fr; }
+  .lite-mock-side { display: none; }
+}

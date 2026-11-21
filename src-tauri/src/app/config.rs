@@ -27,6 +27,14 @@ pub struct AppConfig {
     /// that configs written before this setting existed keep it on.
     #[serde(default)]
     pub refs_disabled: bool,
+    /// Permafrost Lite: the folder all project folders go in (CacheCAD's "CacheCAD folder").
+    #[serde(default)]
+    pub lite_root: Option<PathBuf>,
+    /// Permafrost Lite: the Drive folder "New Project" creates project folders in.
+    #[serde(default)]
+    pub default_parent: Option<String>,
+    #[serde(default)]
+    pub default_parent_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -57,13 +65,28 @@ pub fn folder_id_from_input(input: &str) -> Option<String> {
     is_valid_id(id).then(|| id.to_string())
 }
 
-pub fn default_root(drive_name: &str) -> PathBuf {
-    let base = if cfg!(windows) { PathBuf::from("C:\\CAD") } else { dirs_home().join("CAD") };
-    base.join(crate::names::sanitize(drive_name))
+/// Where Permafrost puts project folders: the same path on every PC, so
+/// SolidWorks' absolute references resolve everywhere.
+pub fn default_base() -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from("C:\\CAD")
+    } else {
+        dirs_home().join("CAD")
+    }
+}
+
+/// Where Permafrost Lite puts project folders unless the user picks another
+/// folder: `Documents\Permafrost Lite`, like CacheCAD's `Documents\CacheCAD`.
+pub fn default_lite_base() -> PathBuf {
+    dirs_home().join("Documents").join("Permafrost Lite")
 }
 
 fn dirs_home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
+    std::env::var_os("USERPROFILE")
+        .filter(|_| cfg!(windows))
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 impl AppConfig {
@@ -73,6 +96,19 @@ impl AppConfig {
             Some(x) => *x = p,
             None => self.projects.push(p),
         }
+    }
+
+    /// The folder new project folders go in.
+    pub fn base_dir(&self) -> PathBuf {
+        if cfg!(feature = "lite") {
+            self.lite_root.clone().unwrap_or_else(default_lite_base)
+        } else {
+            default_base()
+        }
+    }
+
+    fn default_root(&self, name: &str) -> PathBuf {
+        self.base_dir().join(crate::names::sanitize(name))
     }
 
     /// Where `folder_id` should live on this PC: where it already is, else a folder named after
@@ -86,10 +122,10 @@ impl AppConfig {
         if let Some(p) = self.projects.iter().find(|p| p.folder_id == folder_id) {
             return p.root.clone();
         }
-        let mut root = default_root(name);
+        let mut root = self.default_root(name);
         if self.projects.iter().any(|p| p.root == root) {
             let short: String = folder_id.chars().take(6).collect();
-            root = default_root(&format!("{name} {short}"));
+            root = self.default_root(&format!("{name} {short}"));
         }
         root
     }
@@ -118,7 +154,12 @@ impl AppConfig {
                 return Err("The folder id looks wrong".into());
             }
         }
-        if let Some(root) = &self.root {
+        if let Some(id) = &self.default_parent {
+            if !(id == "root" || is_valid_id(id)) {
+                return Err("The default Drive folder looks wrong".into());
+            }
+        }
+        if let Some(root) = self.root.as_ref().or(self.lite_root.as_ref()) {
             if !root.is_absolute() {
                 return Err("Vault folder must be a full path like C:\\CAD\\Team Drive".into());
             }

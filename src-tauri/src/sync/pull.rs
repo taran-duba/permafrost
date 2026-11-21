@@ -85,7 +85,7 @@ impl<D: DriveApi> Vault<D> {
         let mut cur = by_id.get(id).copied();
         while let Some(f) = cur {
             if let Some(cs) = f.prop(props::PENDING_CHANGESET) {
-                if !self.index.has_changeset(cs)? {
+                if self.pending_blocks(cs)? {
                     return Ok(Some(cs.to_string()));
                 }
             }
@@ -146,7 +146,7 @@ impl<D: DriveApi> Vault<D> {
                 continue;
             }
             if let Some(cs) = f.prop(props::PENDING_CHANGESET) {
-                if !self.index.has_changeset(cs)? {
+                if self.pending_blocks(cs)? {
                     plan.deferred.push(Deferred::Pending { file_id: f.id.clone(), changeset: cs.to_string() });
                     continue;
                 }

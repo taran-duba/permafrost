@@ -10,9 +10,9 @@ export function Footer() {
             <Logo size={24} />
             Permafrost
           </span>
-          <p>SolidWorks file sharing over Google Drive, made for FRC teams.</p>
+          <p>Permafrost and Permafrost Lite: SolidWorks file sharing over Google Drive, made for FRC teams.</p>
           <p className="footer-data">
-            Permafrost uses your Google account only to sync the CAD files in the shared drive or folder you choose. Your
+            Both apps use your Google account only to sync the CAD files in the shared drive or folder you choose. Your
             files go straight between your computer and Google, never through us.
           </p>
         </div>

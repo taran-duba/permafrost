@@ -24,6 +24,10 @@ struct State {
     fail_uploads: usize,
     /// Fail the upload after this many more successful ones (simulated crash mid-push).
     crash_after_uploads: Option<usize>,
+    /// Create the next N files, then fail as if the response was lost.
+    lose_create_responses: usize,
+    /// Fail this many upcoming downloads with a 503.
+    fail_downloads: usize,
 }
 
 #[derive(Clone)]
@@ -82,10 +86,31 @@ impl FakeDrive {
         self.state.lock().unwrap().crash_after_uploads = Some(n);
     }
 
+    pub fn lose_next_create_responses(&self, n: usize) {
+        self.state.lock().unwrap().lose_create_responses = n;
+    }
+
+    pub fn fail_next_downloads(&self, n: usize) {
+        self.state.lock().unwrap().fail_downloads = n;
+    }
+
     pub fn clear_faults(&self) {
         let mut s = self.state.lock().unwrap();
         s.fail_uploads = 0;
         s.crash_after_uploads = None;
+        s.lose_create_responses = 0;
+        s.fail_downloads = 0;
+    }
+
+    /// How many revisions a file has (old ones stay in Drive's history).
+    pub fn revision_count(&self, file_id: &str) -> usize {
+        self.state.lock().unwrap().revisions.get(file_id).map_or(0, Vec::len)
+    }
+
+    /// Every non-trashed file with this name, anywhere.
+    pub fn files_named(&self, name: &str) -> Vec<RemoteFile> {
+        let s = self.state.lock().unwrap();
+        s.files.values().filter(|f| !f.trashed && f.name == name).cloned().collect()
     }
 
     pub fn is_kept_forever(&self, file_id: &str, rev: &str) -> bool {
@@ -249,7 +274,11 @@ impl DriveApi for FakeDrive {
 
     async fn download_revision(&self, file_id: &str, revision_id: &str, dest: &Path) -> Result<()> {
         let bytes = {
-            let s = self.state.lock().unwrap();
+            let mut s = self.state.lock().unwrap();
+            if s.fail_downloads > 0 {
+                s.fail_downloads -= 1;
+                return Err(Error::Drive { status: 503, message: "backendError".into() });
+            }
             s.revisions
                 .get(file_id)
                 .and_then(|r| r.iter().find(|(id, _)| id == revision_id))
@@ -290,6 +319,10 @@ impl DriveApi for FakeDrive {
         f.app_properties = app_properties;
         Self::add_revision(&mut s, &mut f, bytes);
         Self::commit_change(&mut s, f.clone());
+        if s.lose_create_responses > 0 {
+            s.lose_create_responses -= 1;
+            return Err(Error::Network("simulated lost response".into()));
+        }
         Ok(f)
     }
 
