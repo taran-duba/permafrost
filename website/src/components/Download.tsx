@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion } from "motion/react";
 import { ArrowUpRight, Download as DownloadIcon } from "lucide-react";
 import { AppleIcon, WindowsIcon } from "./BrandIcons";
@@ -12,6 +12,7 @@ import {
   useRelease,
   type Product,
 } from "../lib/release";
+import { setProduct, useProduct } from "../lib/product";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -39,7 +40,7 @@ const NOTES: Record<Product, { windows: string[]; mac: string }> = {
 };
 
 export function Download() {
-  const [product, setProduct] = useState<Product>("permafrost");
+  const product = useProduct();
   // Fetch both up front so flipping the toggle never waits on the network.
   const releases = { permafrost: useRelease("permafrost"), lite: useRelease("lite") };
   const release = releases[product];

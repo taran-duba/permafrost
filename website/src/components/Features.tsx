@@ -1,40 +1,55 @@
 import { motion } from "motion/react";
-import { Archive, FileLock2, LifeBuoy, ScanSearch, ShieldCheck, Zap } from "lucide-react";
+import { Archive, ArrowUpDown, FileLock2, LifeBuoy, ScanSearch, ShieldCheck, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-type Feature = { icon: LucideIcon; title: string; body: string; wide?: boolean; tone?: string };
+type App = "permafrost" | "lite" | "both";
+type Feature = { icon: LucideIcon; title: string; body: string; app: App; wide?: boolean; tone?: string };
+
+const APP_LABEL: Record<App, string> = { permafrost: "Permafrost", lite: "Permafrost Lite", both: "Both apps" };
 
 const FEATURES: Feature[] = [
   {
     icon: Zap,
     title: "Built for slow school Wi-Fi",
-    body: "The index lives on your PC, so browsing is instant and syncing happens in the background. Only changed files move.",
+    body: "The index lives on your PC, so lists appear instantly and Drive is checked in the background. Only changed files move.",
+    app: "both",
     wide: true,
   },
   {
     icon: ShieldCheck,
     title: "No more crashes on weird names",
     body: "Emoji, slashes, CON and duplicate names all map to safe Windows names, and a crash-safe journal finishes what it started.",
+    app: "both",
   },
   {
     icon: FileLock2,
     title: "Nobody overwrites anybody",
     body: "Check-out locks are stored on Drive itself, and files you haven't checked out are read-only on disk.",
+    app: "permafrost",
   },
   {
     icon: ScanSearch,
     title: "Mates that don't break",
     body: "SolidWorks itself reports each assembly's references, and pushes stop on missing files before teammates ever see them.",
+    app: "permafrost",
   },
   {
     icon: LifeBuoy,
-    title: "Unsaved work is never thrown away",
-    body: "If an update lands on a file you edited without checking out, your edits are kept as a separate copy.",
+    title: "Your work is never thrown away",
+    body: "If an update lands on a file you edited, your edits are kept: as a separate copy in Permafrost, in a backups folder in Lite.",
+    app: "both",
   },
   {
     icon: Archive,
     title: "A clear history of pushes",
-    body: "Every push is logged with who made it, when, how many files went up, and the message they wrote.",
+    body: "Every push is logged with who made it, when, how many files went up, and the message they wrote. Lite uploads show up there too.",
+    app: "permafrost",
+  },
+  {
+    icon: ArrowUpDown,
+    title: "Or keep it as simple as CacheCAD",
+    body: "Permafrost Lite gives you two counts, Upload Changes and Download Changes, and a list to tick. No check-outs to learn, and a warning with an explicit Overwrite whenever someone else changed the same file.",
+    app: "lite",
     wide: true,
   },
 ];
@@ -62,6 +77,7 @@ export function Features() {
               <span className="card-icon">
                 <f.icon size={28} strokeWidth={1.5} />
               </span>
+              <span className={`app-tag ${f.app}`}>{APP_LABEL[f.app]}</span>
               <h3>{f.title}</h3>
               <p>{f.body}</p>
             </motion.article>

@@ -9,7 +9,7 @@ export type Route = { path: string; title: string; description: string; Page: Co
 export const ROUTES: Route[] = [
   {
     path: "/",
-    title: "Permafrost · SolidWorks + Google Drive file sharing for FRC teams",
+    title: "Permafrost & Permafrost Lite · SolidWorks + Google Drive file sharing for FRC teams",
     description:
       "Share SolidWorks files over Google Drive. Permafrost adds check-out locks and atomic pushes; Permafrost Lite keeps it to simple upload and download. Windows and Mac.",
     Page: App,

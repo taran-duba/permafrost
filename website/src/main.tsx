@@ -10,6 +10,7 @@ import "./styles/sections.css";
 import "./styles/legal.css";
 import "./styles/mock.css";
 import "./styles/mock-scenes.css";
+import "./styles/lite.css";
 import { routeFor } from "./routes";
 
 const { Page } = routeFor(window.location.pathname);

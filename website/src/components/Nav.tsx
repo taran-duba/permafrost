@@ -25,7 +25,9 @@ export function Nav({ home = true }: { home?: boolean }) {
         <nav className="nav-links" aria-label="Sections">
           <a href={`${base}#how`}>How it works</a>
           <a href={`${base}#features`}>Features</a>
-          <a href={`${base}#products`}>Products</a>
+          <a href={`${base}#products`}>
+            Permafrost Lite<span className="nav-new">New</span>
+          </a>
           <a href={`${base}#download`}>Download</a>
         </nav>
         <div className="nav-actions">

@@ -4,8 +4,8 @@ import { Cloud, Database, HardDrive } from "lucide-react";
 
 const NODES = [
   { icon: Cloud, title: "Google Drive", body: "Your team's shared drive stays the single source of truth." },
-  { icon: Database, title: "Permafrost index", body: "A SQLite index and sync journal on each PC. Survives crashes." },
-  { icon: HardDrive, title: "Your CAD folder", body: "Real files SolidWorks opens. Read-only until you check out." },
+  { icon: Database, title: "Local index", body: "A SQLite index and sync journal on each PC, in both apps. Survives crashes." },
+  { icon: HardDrive, title: "Your CAD folder", body: "Real files SolidWorks opens. Permafrost keeps them read-only until you check out; Lite leaves them editable." },
 ];
 const LINKS = ["Change feed", "Atomic pull & push"];
 
@@ -24,7 +24,7 @@ export function SyncFlow() {
             Drive in the cloud. Speed on your desk.
           </h2>
           <p className="section-lede">
-            Permafrost sits between your shared drive and SolidWorks, so the slow part (the network) never sits between
+            Permafrost and Permafrost Lite sit between your shared drive and SolidWorks, so the slow part (the network) never sits between
             you and your files.
           </p>
         </header>
