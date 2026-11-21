@@ -46,10 +46,15 @@ async fn download_all(v: &V) -> super::download::DownloadReport {
     v.lite_download(&keys(&p.download)).await.unwrap()
 }
 
+/// Edit a file the way a person would: its modified time moves on. (Change detection
+/// compares size and modified time to the millisecond before hashing, and a fast machine
+/// can download and rewrite a same-size file within one millisecond.)
 fn write(v: &V, rel: &str, bytes: &[u8]) {
     let p = v.root.join(rel);
     std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-    std::fs::write(p, bytes).unwrap();
+    std::fs::write(&p, bytes).unwrap();
+    let later = std::time::SystemTime::now() + std::time::Duration::from_secs(2);
+    std::fs::File::options().write(true).open(&p).unwrap().set_modified(later).unwrap();
 }
 
 fn read(v: &V, rel: &str) -> Vec<u8> {
