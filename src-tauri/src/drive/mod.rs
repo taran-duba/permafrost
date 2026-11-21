@@ -32,6 +32,9 @@ pub mod props {
     pub const PENDING_CHANGESET: &str = "permafrostPending";
     /// Set on a check-in manifest file; the value is the changeset id.
     pub const MANIFEST: &str = "permafrostManifest";
+    /// Set on a file a push creates, so an interrupted push can find it again
+    /// instead of creating a duplicate.
+    pub const CREATE_KEY: &str = "permafrostCreateKey";
 
     /// The pre-rename key for `key`, if it has one.
     pub fn legacy(key: &str) -> Option<&'static str> {

@@ -54,6 +54,8 @@ pub struct Status {
     is_admin: bool,
     /// Every project this PC has opened; the open one is marked `active`.
     projects: Vec<ProjectInfo>,
+    /// The folder project folders go in (Lite's root folder).
+    base_dir: PathBuf,
 }
 
 #[derive(Serialize)]
@@ -188,6 +190,7 @@ pub async fn get_status(state: State<'_, AppState>) -> Result<Status> {
                 })
                 .collect()
         },
+        base_dir: cfg.base_dir(),
     })
 }
 
@@ -314,7 +317,7 @@ pub async fn open_project(app: AppHandle, state: State<'_, AppState>, folder_id:
 }
 
 /// Catch the newly opened project up now instead of waiting for the next background sync.
-fn sync_soon(app: &AppHandle) {
+pub(crate) fn sync_soon(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();

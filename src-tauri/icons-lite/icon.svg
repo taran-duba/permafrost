@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Permafrost Lite: upload / download arrows on a frost-dark tile. -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="#0b141b"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="none" stroke="#28343f" stroke-width="16"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="84">
+    <path d="M384 760V280M240 420l144-144 144 144" stroke="#65d0dc"/>
+    <path d="M640 264v480M496 604l144 144 144-144" stroke="#e5edf1"/>
+  </g>
+</svg>

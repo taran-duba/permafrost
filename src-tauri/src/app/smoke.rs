@@ -113,6 +113,9 @@ async fn run(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
 
     state.open_demo().await.map_err(|e| format!("open demo vault: {e}"))?;
     r.demo_vault = true;
+    if cfg!(feature = "lite") {
+        return run_lite(app, r).await;
+    }
 
     let report = state.sync_once().await.map_err(|e| format!("sync: {e}"))?;
     if !report.errors.is_empty() {
@@ -146,6 +149,36 @@ async fn run(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
         None => {}
     }
 
+    wait_for_ui(app, r).await?;
+
+    // The UI driver's project switch starts a background sync of the reopened demo vault. Wait
+    // for it (the sync lock) and finish the mirror, so the feature checks don't race it.
+    let report = state.sync_once().await.map_err(|e| format!("sync after the UI steps: {e}"))?;
+    if !report.errors.is_empty() {
+        return Err(format!("sync errors after the UI steps: {:?}", report.errors));
+    }
+
+    r.features = super::smoke_features::run(&state).await?;
+    check_sign_in(r)
+}
+
+/// Permafrost Lite: download everything, let the UI click through, then the Lite checks.
+async fn run_lite(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    state.sync_once().await.map_err(|e| format!("refresh: {e}"))?;
+    r.files_downloaded = super::smoke_lite::first_download(&state).await?;
+    wait_for_ui(app, r).await?;
+    // The UI driver may have reopened the demo (a fresh drive); download it again.
+    let _guard = state.sync_lock.lock().await;
+    if !state.vault().await.map_err(|e| e.to_string())?.lite_plan().map_err(|e| e.to_string())?.download.is_empty() {
+        super::smoke_lite::first_download(&state).await?;
+    }
+    r.features = super::smoke_lite::features(&state).await?;
+    check_sign_in(r)
+}
+
+/// Wait for the UI to load, click through the real screens and report each step.
+async fn wait_for_ui(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
     let smoke = app.state::<Smoke>();
     if !smoke.ui_ready.load(Ordering::SeqCst) {
         tokio::time::timeout(UI_TIMEOUT, smoke.notify.notified())
@@ -166,16 +199,10 @@ async fn run(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
     if let Some(bad) = r.ui_steps.iter().find(|s| !s.ok) {
         return Err(format!("UI step \"{}\" failed: {}", bad.name, bad.detail.clone().unwrap_or_default()));
     }
+    Ok(())
+}
 
-    // The UI driver's project switch starts a background sync of the reopened demo vault. Wait
-    // for it (the sync lock) and finish the mirror, so the feature checks don't race it.
-    let report = state.sync_once().await.map_err(|e| format!("sync after the UI steps: {e}"))?;
-    if !report.errors.is_empty() {
-        return Err(format!("sync errors after the UI steps: {:?}", report.errors));
-    }
-
-    r.features = super::smoke_features::run(&state).await?;
-
+fn check_sign_in(r: &mut SmokeResult) -> Result<(), String> {
     r.sign_in_built_in = crate::drive::auth::OAuthClient::built_in()
         .is_some_and(|c| c.client_id.ends_with(".apps.googleusercontent.com"));
     // CI sets this when the repo secrets are configured, so a build that

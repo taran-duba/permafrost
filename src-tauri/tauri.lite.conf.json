@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Permafrost Lite",
+  "mainBinaryName": "permafrost-lite",
+  "version": "1.0.0",
+  "identifier": "org.frc.cadsync.lite",
+  "build": {
+    "beforeDevCommand": "pnpm dev:lite",
+    "beforeBuildCommand": "pnpm build:lite",
+    "frontendDist": "../dist-lite"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Permafrost Lite",
+        "width": 960,
+        "height": 600,
+        "minWidth": 760,
+        "minHeight": 480
+      }
+    ]
+  },
+  "bundle": {
+    "externalBin": [],
+    "icon": [
+      "icons-lite/32x32.png",
+      "icons-lite/128x128.png",
+      "icons-lite/128x128@2x.png",
+      "icons-lite/icon.icns",
+      "icons-lite/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/taran-duba/permafrost/releases/download/lite-latest/latest.json"
+      ]
+    }
+  }
+}

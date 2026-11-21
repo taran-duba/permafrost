@@ -3,6 +3,7 @@
 .story,
 .flow,
 .features,
+.products,
 .download {
   padding: clamp(80px, 12vw, 140px) 0;
 }

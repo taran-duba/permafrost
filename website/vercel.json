@@ -5,7 +5,10 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/download/:platform", "destination": "/api/release?platform=:platform" }],
+  "rewrites": [
+    { "source": "/download/lite/:platform", "destination": "/api/release?product=lite&platform=:platform" },
+    { "source": "/download/:platform", "destination": "/api/release?platform=:platform" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

@@ -1,4 +1,4 @@
-/* Feature grid, download, footer. */
+/* Feature grid, products, download, footer. */
 
 /* ---- features ---- */
 
@@ -76,7 +76,230 @@
   }
 }
 
+/* ---- products ---- */
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, white 2%), color-mix(in srgb, var(--panel) 80%, transparent));
+}
+
+.product-card.featured {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.product-kicker {
+  font-size: 12.5px;
+  color: var(--accent);
+}
+
+.product-card h3 {
+  margin-top: 10px;
+  font-size: clamp(26px, 3vw, 32px);
+  letter-spacing: -0.03em;
+}
+
+.product-lede {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 16.5px;
+  line-height: 1.45;
+}
+
+.product-list {
+  margin: 22px 0 28px;
+  padding: 20px 0 0;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.product-list li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.product-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: var(--accent);
+  opacity: 0.8;
+}
+
+.product-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.tag {
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tag.new { background: var(--ok-bg); color: var(--ok); }
+.tag.rev { background: var(--info-bg); color: var(--info); }
+.tag.del { background: var(--bad-bg); color: var(--bad); }
+.tag.mis { background: var(--warn-bg); color: var(--warn); }
+
+.product-cta {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.cmp-wrap {
+  margin-top: 28px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  overflow: hidden;
+}
+
+.cmp {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.cmp th,
+.cmp td {
+  padding: 14px 20px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.cmp thead th {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cmp thead th:not(:first-child),
+.cmp td {
+  width: 22%;
+}
+
+.cmp tbody th {
+  font-weight: 450;
+  color: var(--text);
+}
+
+.cmp tbody tr + tr > * {
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.cmp-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmp-mark.yes { color: var(--accent); }
+.cmp-mark.no { color: var(--line-strong); }
+
+.cmp-note {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.product-pick {
+  margin-top: 28px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.product-pick strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .product-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .product-card {
+    padding: 24px;
+  }
+  .cmp {
+    font-size: 14px;
+  }
+  .cmp th,
+  .cmp td {
+    padding: 12px 12px;
+  }
+  .cmp thead th:not(:first-child),
+  .cmp td {
+    width: 26%;
+  }
+  .cmp-mark {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}
+
 /* ---- download ---- */
+
+.product-toggle {
+  position: relative;
+  display: flex;
+  width: fit-content;
+  margin: calc(clamp(40px, 6vw, 72px) * -0.5) auto 32px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+
+.product-toggle button {
+  min-height: 40px;
+  min-width: 120px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.25s var(--spring), color 0.25s var(--spring);
+  touch-action: manipulation;
+}
+
+.product-toggle button:hover {
+  color: var(--text);
+}
+
+.product-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
 
 .download {
   overflow: clip;
@@ -174,7 +397,11 @@
 
 @media (max-width: 760px) {
   .dl-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dl-main,
+  .dl-main .btn-sub {
+    white-space: normal;
   }
   .dl-card {
     padding: 24px;

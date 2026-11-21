@@ -20,7 +20,11 @@ use crate::error::{Error, Result};
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const SCOPE: &str = "https://www.googleapis.com/auth/drive openid email";
+// Permafrost Lite keeps its own sign-in, so signing out of one app leaves the other signed in.
+#[cfg(not(feature = "lite"))]
 const KEYRING_SERVICE: &str = "cadsync";
+#[cfg(feature = "lite")]
+const KEYRING_SERVICE: &str = "permafrost-lite";
 const KEYRING_USER: &str = "google-refresh-token";
 
 #[derive(Debug, Clone, serde::Serialize, Deserialize)]

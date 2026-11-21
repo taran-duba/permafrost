@@ -19,6 +19,7 @@ pnpm tauri build                       # installer/dmg -> src-tauri/target/relea
 ```
 
 - There is no JS lint or JS test runner. CI (`.github/workflows/macos.yml`, `windows.yml`) runs the Rust and SwRefs tests, builds, then smoke-tests the built app.
+- Permafrost Lite (the CacheCAD-style upload/download app, no locks) is a build variant: `CADSYNC_DEMO=1 pnpm lite` runs it, `cargo test --manifest-path src-tauri/Cargo.toml --features lite` tests it, `pnpm lite:bundle` packages it. Run tests both with and without `--features lite`.
 - On Windows, every Rust build (`tauri dev`, `cargo test`) needs `src-tauri/binaries/SwRefs-x86_64-pc-windows-msvc.exe`. Run `pnpm sidecar` once first (it runs `scripts/publish-swrefs.ps1`). `tauri.windows.conf.json` wires this into `pnpm tauri build` and adds the `externalBin`. macOS/Linux don't bundle SwRefs.
 - The website is a separate package: `cd website && pnpm dev | build | typecheck`.
 
@@ -33,6 +34,8 @@ pnpm tauri build                       # installer/dmg -> src-tauri/target/relea
 - `rename.rs`: rename/move a file or folder: finds every assembly/drawing using it, rewrites their references via SwRefs, and pushes them together with the Drive move as one changeset. `sync/restore.rs` restores files from a past push as a new push.
 - The UI calls the "check-in" step **push** ("Push changes"); code identifiers still say check_in.
 - `app/`: Tauri commands (`commands.rs`, plus multi-file ones in `file_ops.rs`; all registered in `lib.rs`'s `generate_handler!`), config, `AppState`, background poller, logging/crash reports, demo mode, and `smoke.rs`.
+
+**Permafrost Lite**: `src-tauri/src/lite/` holds the three-way change plan (`plan.rs`: New/Revision/Delete/Mismatch/Move per side), `download.rs` (stage all, verify md5, then swap; backups outside the project) and `upload.rs` (goes through `sync/push.rs` with `Journal::unlocked`, which re-checks each file before uploading and never overwrites a Permafrost lock). This module always compiles so its tests always run; only the wiring is behind the `lite` feature: `lib.rs` `handlers()`, `app/lite_ops.rs`, the poller (`app/mod.rs` `sync_vault` only refreshes in Lite), the keyring name, and `AppConfig::base_dir`. The UI is `src/lite/`, chosen in `src/main.tsx` by `import.meta.env.MODE === "lite"`. `tauri.lite.conf.json` sets its own name, identifier, icons (`icons-lite/`), `dist-lite` and updater endpoint.
 
 **Frontend (`src/`)**: React 19 + Vite. `src/api.ts` is the typed wrapper over Tauri `invoke`; when adding a command, register it in `lib.rs` and add its wrapper there. Views are in `src/views/`.
 

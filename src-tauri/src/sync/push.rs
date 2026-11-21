@@ -12,6 +12,10 @@
 //!
 //! A crash at any step resumes from the journal, and the locks held the whole
 //! time mean nobody else could touch the files meanwhile.
+//!
+//! Permafrost Lite pushes the same way without locks (`Journal::unlocked`):
+//! each file is re-checked right before its upload, and a file someone else
+//! locked or changed meanwhile is left out of the push instead of overwritten.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -42,10 +46,30 @@ pub struct PushRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct JournalItem {
-    file_id: Option<String>,
-    rel_path: PathBuf,
-    uploaded_rev: Option<String>,
+pub(crate) struct JournalItem {
+    pub(crate) file_id: Option<String>,
+    pub(crate) rel_path: PathBuf,
+    pub(crate) uploaded_rev: Option<String>,
+    /// New files: a key saved before `create_file`, so a resumed push finds
+    /// the file it already created instead of creating a duplicate.
+    #[serde(default)]
+    pub(crate) create_key: Option<String>,
+    /// The local fingerprint taken just before uploading. Recorded as the
+    /// synced state, so a save made during the upload still shows as a change.
+    #[serde(default)]
+    pub(crate) pre_fp: Option<(u64, i64)>,
+    /// Unlocked pushes: the Drive revision this upload is based on.
+    #[serde(default)]
+    pub(crate) base_rev: Option<String>,
+    /// Unlocked pushes: replace the Drive file even if it changed since `base_rev`.
+    #[serde(default)]
+    pub(crate) overwrite: bool,
+}
+
+impl JournalItem {
+    pub(crate) fn new(file_id: Option<String>, rel_path: PathBuf) -> Self {
+        Self { file_id, rel_path, uploaded_rev: None, create_key: None, pre_fp: None, base_rev: None, overwrite: false }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,21 +83,54 @@ struct MoveItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Journal {
-    id: String,
-    message: String,
-    keep_locked: bool,
-    created_time: String,
-    items: Vec<JournalItem>,
+pub(crate) struct Journal {
+    pub(crate) id: String,
+    pub(crate) message: String,
+    pub(crate) keep_locked: bool,
+    pub(crate) created_time: String,
+    pub(crate) items: Vec<JournalItem>,
     #[serde(default)]
     moves: Vec<MoveItem>,
-    committed: bool,
+    pub(crate) committed: bool,
+    /// A Permafrost Lite push: no locks are taken, held or released.
+    #[serde(default)]
+    pub(crate) unlocked: bool,
+    /// Files left out of the push because they changed on Drive or were locked
+    /// before their upload started.
+    #[serde(default)]
+    pub(crate) skipped: Vec<SkippedFile>,
+}
+
+impl Journal {
+    pub(crate) fn new(message: String, items: Vec<JournalItem>, unlocked: bool) -> Self {
+        let mut items = items;
+        items.sort_by_key(|i| upload_order(&i.rel_path));
+        Self {
+            id: ulid::Ulid::new().to_string(),
+            message,
+            keep_locked: false,
+            created_time: chrono::Utc::now().to_rfc3339(),
+            items,
+            moves: Vec::new(),
+            committed: false,
+            unlocked,
+            skipped: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkippedFile {
+    pub rel_path: PathBuf,
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PushOutcome {
     pub changeset: String,
     pub files: usize,
+    /// Files left out (unlocked pushes only): changed on Drive or locked meanwhile.
+    pub skipped: Vec<SkippedFile>,
 }
 
 fn upload_order(rel: &std::path::Path) -> u8 {
@@ -130,7 +187,7 @@ impl<D: DriveApi> Vault<D> {
             if !self.abs(&rel).exists() {
                 return Err(Error::NotFound(rel.display().to_string()));
             }
-            items.push(JournalItem { file_id: Some(id.clone()), rel_path: rel, uploaded_rev: None });
+            items.push(JournalItem::new(Some(id.clone()), rel));
         }
         for rel in &req.new_files {
             if map.id_for(rel).is_some() {
@@ -140,7 +197,7 @@ impl<D: DriveApi> Vault<D> {
             if !self.abs(rel).is_file() {
                 return Err(Error::NotFound(rel.display().to_string()));
             }
-            items.push(JournalItem { file_id: None, rel_path: rel.clone(), uploaded_rev: None });
+            items.push(JournalItem::new(None, rel.clone()));
         }
         items.sort_by_key(|i| upload_order(&i.rel_path));
 
@@ -164,7 +221,7 @@ impl<D: DriveApi> Vault<D> {
             moves.push(MoveItem { file_id: id.clone(), new_rel: new_rel.clone(), is_folder: f.is_folder(), rev: None, done: false });
         }
 
-        let mut j = Journal {
+        let j = Journal {
             id: ulid::Ulid::new().to_string(),
             message: req.message,
             keep_locked: req.keep_locked,
@@ -172,19 +229,41 @@ impl<D: DriveApi> Vault<D> {
             items,
             moves,
             committed: false,
+            unlocked: false,
+            skipped: Vec::new(),
         };
+        self.run_push(j).await
+    }
+
+    /// Journal a verified push, then carry it out.
+    pub(crate) async fn run_push(&self, mut j: Journal) -> Result<PushOutcome> {
         self.save_journal(&j)?;
         self.continue_push(&mut j).await
     }
 
-    /// Finish any check-ins interrupted by a crash or lost connection.
+    /// Finish any check-ins interrupted by a crash or lost connection. One
+    /// that fails doesn't hold up the others; the first error is returned
+    /// once every journal has been tried.
     pub async fn resume_pushes(&self) -> Result<Vec<PushOutcome>> {
         let mut done = Vec::new();
-        for (_, payload) in self.index.journal()? {
-            let mut j: Journal = serde_json::from_str(&payload)?;
-            done.push(self.continue_push(&mut j).await?);
+        let mut first_err = None;
+        for (id, payload) in self.index.journal()? {
+            let result = match serde_json::from_str::<Journal>(&payload) {
+                Ok(mut j) => self.continue_push(&mut j).await,
+                Err(e) => Err(e.into()),
+            };
+            match result {
+                Ok(out) => done.push(out),
+                Err(e) => {
+                    tracing::warn!(changeset = %id, %e, "could not finish an interrupted push; will retry");
+                    first_err.get_or_insert(e);
+                }
+            }
         }
-        Ok(done)
+        match first_err {
+            Some(e) if done.is_empty() => Err(e),
+            _ => Ok(done),
+        }
     }
 
     fn save_journal(&self, j: &Journal) -> Result<()> {
@@ -210,15 +289,36 @@ impl<D: DriveApi> Vault<D> {
         }
 
         // 2. Upload whatever isn't uploaded yet.
-        for n in 0..j.items.len() {
+        let mut n = 0;
+        while n < j.items.len() {
             if j.items[n].uploaded_rev.is_some() {
+                n += 1;
                 continue;
             }
-            let uploaded = self.upload_item(&j.id, &j.items[n]).await?;
+            if j.unlocked {
+                if let Some(reason) = self.unlocked_blocker(&j.items[n]).await? {
+                    let item = j.items.remove(n);
+                    tracing::info!(file = %item.rel_path.display(), %reason, "left out of the push");
+                    j.skipped.push(SkippedFile { rel_path: item.rel_path, reason });
+                    self.save_journal(j)?;
+                    continue;
+                }
+            }
+            let retry = j.items[n].create_key.is_some();
+            if j.items[n].file_id.is_none() && !retry {
+                j.items[n].create_key = Some(ulid::Ulid::new().to_string());
+            }
+            j.items[n].pre_fp = localfs::fingerprint(&self.abs(&j.items[n].rel_path));
+            self.save_journal(j)?;
+            let uploaded = match self.find_created(&j.items[n], retry).await? {
+                Some(f) => f,
+                None => self.upload_item(&j.id, j.unlocked, &j.items[n]).await?,
+            };
             j.items[n].file_id = Some(uploaded.id.clone());
             j.items[n].uploaded_rev = uploaded.head_revision_id.clone();
             self.index.apply_remote(std::slice::from_ref(&uploaded), &[])?;
             self.save_journal(j)?;
+            n += 1;
         }
 
         // 3. Commit.
@@ -235,6 +335,11 @@ impl<D: DriveApi> Vault<D> {
                 .chain(j.moves.iter().filter_map(|m| Some((m.file_id.clone(), m.rev.clone()?))))
                 .collect::<BTreeMap<_, _>>(),
         };
+        if manifest.files.is_empty() {
+            // Everything was left out (unlocked pushes): nothing to commit.
+            self.index.delete_journal(&j.id)?;
+            return Ok(PushOutcome { changeset: j.id.clone(), files: 0, skipped: j.skipped.clone() });
+        }
         if !j.committed {
             self.write_manifest(&manifest).await?;
             j.committed = true;
@@ -246,7 +351,9 @@ impl<D: DriveApi> Vault<D> {
         for item in &j.items {
             let (Some(id), Some(rev)) = (&item.file_id, &item.uploaded_rev) else { continue };
             self.drive.keep_revision_forever(id, rev).await?;
-            let patch = if j.keep_locked {
+            let patch = if j.unlocked {
+                MetadataPatch::default().unset(props::PENDING_CHANGESET)
+            } else if j.keep_locked {
                 MetadataPatch::default()
                     .unset(props::PENDING_CHANGESET)
                     .read_only(true, Some(format!("Checked out by {} in Permafrost", self.me)))
@@ -257,7 +364,7 @@ impl<D: DriveApi> Vault<D> {
             self.index.apply_remote(std::slice::from_ref(&f), &[])?;
 
             let abs = self.abs(&item.rel_path);
-            let fp = localfs::fingerprint(&abs);
+            let fp = item.pre_fp.or_else(|| localfs::fingerprint(&abs));
             self.index.set_local(&LocalState {
                 file_id: id.clone(),
                 rel_path: item.rel_path.to_string_lossy().to_string(),
@@ -266,7 +373,7 @@ impl<D: DriveApi> Vault<D> {
                 synced_size: fp.map(|x| x.0),
                 synced_mtime: fp.map(|x| x.1),
             })?;
-            if abs.exists() {
+            if abs.exists() && !j.unlocked {
                 localfs::set_read_only(&abs, !j.keep_locked)?;
             }
         }
@@ -280,7 +387,7 @@ impl<D: DriveApi> Vault<D> {
                 if let Some(rev) = &m.rev {
                     self.drive.keep_revision_forever(&m.file_id, rev).await?;
                 }
-                if j.keep_locked {
+                if j.keep_locked || j.unlocked {
                     MetadataPatch::default().unset(props::PENDING_CHANGESET)
                 } else {
                     Self::unlock_patch().unset(props::PENDING_CHANGESET)
@@ -288,7 +395,7 @@ impl<D: DriveApi> Vault<D> {
             };
             let f = self.drive.update_metadata(&m.file_id, patch).await?;
             self.index.apply_remote(std::slice::from_ref(&f), &[])?;
-            if !m.is_folder && !j.keep_locked {
+            if !m.is_folder && !j.keep_locked && !j.unlocked {
                 let abs = self.abs(&m.new_rel);
                 if abs.exists() {
                     localfs::set_read_only(&abs, true)?;
@@ -296,39 +403,49 @@ impl<D: DriveApi> Vault<D> {
             }
         }
         self.index.delete_journal(&j.id)?;
-        Ok(PushOutcome { changeset: j.id.clone(), files: j.items.len() + j.moves.iter().filter(|m| !m.is_folder).count() })
+        Ok(PushOutcome {
+            changeset: j.id.clone(),
+            files: j.items.len() + j.moves.iter().filter(|m| !m.is_folder).count(),
+            skipped: j.skipped.clone(),
+        })
     }
 
-    async fn upload_item(&self, changeset: &str, item: &JournalItem) -> Result<RemoteFile> {
+    async fn upload_item(&self, changeset: &str, unlocked: bool, item: &JournalItem) -> Result<RemoteFile> {
         let src = self.abs(&item.rel_path);
         match &item.file_id {
             Some(id) => {
-                // Lift the content restriction just for the upload; the lock
-                // properties stay, so other clients still treat it as checked out.
-                let patch = MetadataPatch::default()
-                    .set(props::PENDING_CHANGESET, changeset)
-                    .read_only(false, None);
+                let mut patch = MetadataPatch::default().set(props::PENDING_CHANGESET, changeset);
+                if !unlocked {
+                    // Lift the content restriction just for the upload; the lock
+                    // properties stay, so other clients still treat it as checked out.
+                    patch = patch.read_only(false, None);
+                }
                 self.drive.update_metadata(id, patch).await?;
                 self.drive.upload_content(id, &src).await
             }
             None => {
                 let parent = self.ensure_parent_folder(&item.rel_path).await?;
                 let name = item.rel_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-                let props = BTreeMap::from([
-                    (props::PENDING_CHANGESET.to_string(), changeset.to_string()),
-                    (props::LOCK_OWNER.to_string(), self.me.clone()),
-                    (props::LOCK_OWNER_NAME.to_string(), self.my_name.clone()),
-                    (props::LOCK_ID.to_string(), ulid::Ulid::new().to_string()),
-                    (props::LOCKED_AT.to_string(), chrono::Utc::now().to_rfc3339()),
-                    (props::LOCK_MACHINE.to_string(), self.machine.clone()),
-                ]);
+                let mut props = BTreeMap::from([(props::PENDING_CHANGESET.to_string(), changeset.to_string())]);
+                if let Some(key) = &item.create_key {
+                    props.insert(props::CREATE_KEY.to_string(), key.clone());
+                }
+                if !unlocked {
+                    props.extend([
+                        (props::LOCK_OWNER.to_string(), self.me.clone()),
+                        (props::LOCK_OWNER_NAME.to_string(), self.my_name.clone()),
+                        (props::LOCK_ID.to_string(), ulid::Ulid::new().to_string()),
+                        (props::LOCKED_AT.to_string(), chrono::Utc::now().to_rfc3339()),
+                        (props::LOCK_MACHINE.to_string(), self.machine.clone()),
+                    ]);
+                }
                 self.drive.create_file(&parent, &name, &src, props).await
             }
         }
     }
 
     /// Create any Drive folders missing on the way to a new file.
-    async fn ensure_parent_folder(&self, rel: &std::path::Path) -> Result<String> {
+    pub(super) async fn ensure_parent_folder(&self, rel: &std::path::Path) -> Result<String> {
         let mut parent_id = self.root_id.clone();
         let mut so_far = PathBuf::new();
         let Some(dir) = rel.parent() else { return Ok(parent_id) };
@@ -380,182 +497,5 @@ impl<D: DriveApi> Vault<D> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::drive::fake::FakeDrive;
-    use crate::sync::pull::Deferred;
-    use crate::sync::testutil::vault;
-
-    /// Robot.SLDASM + Gear.SLDPRT on Drive; Alex and Blair both synced.
-    async fn team() -> (FakeDrive, String, String, crate::sync::testutil::Fixture, crate::sync::testutil::Fixture) {
-        let drive = FakeDrive::new("seed@team.org");
-        let root = drive.drive_id.clone();
-        let gear = drive.seed_file(&root, "Gear.SLDPRT", b"gear v1");
-        let robot = drive.seed_file(&root, "Robot.SLDASM", b"robot v1");
-        let a = vault(&drive, "alex@team.org", "pc-a");
-        let b = vault(&drive, "blair@team.org", "pc-b");
-        for v in [&a.vault, &b.vault] {
-            v.sync_down().await.unwrap();
-        }
-        (drive, gear, robot, a, b)
-    }
-
-    fn edit(v: &Vault<FakeDrive>, rel: &str, bytes: &[u8]) {
-        std::fs::write(v.root.join(rel), bytes).unwrap();
-    }
-
-    #[tokio::test]
-    async fn assembly_and_parts_arrive_together() {
-        let (drive, gear, robot, a, b) = team().await;
-        let av = &a.vault;
-        av.check_out(&gear).await.unwrap();
-        av.check_out(&robot).await.unwrap();
-        edit(av, "Gear.SLDPRT", b"gear v2");
-        edit(av, "Robot.SLDASM", b"robot v2");
-        std::fs::write(av.root.join("Spacer.SLDPRT"), b"spacer v1").unwrap();
-
-        let out = av
-            .push(PushRequest {
-                files: vec![robot.clone(), gear.clone()],
-                new_files: vec!["Spacer.SLDPRT".into()],
-                message: "new gear ratio".into(),
-                keep_locked: false,
-                moves: vec![],
-            })
-            .await
-            .unwrap();
-        assert_eq!(out.files, 3);
-        assert!(av.index.changeset(&out.changeset).unwrap().is_some());
-        let gf = drive.get_file(&gear).await.unwrap();
-        assert!(gf.lock().is_none() && !gf.read_only && gf.prop(props::PENDING_CHANGESET).is_none());
-        assert!(drive.is_kept_forever(&gear, gf.head_revision_id.as_deref().unwrap()));
-        assert!(localfs::is_read_only(&av.root.join("Gear.SLDPRT")), "released → read-only again");
-
-        let r = b.vault.sync_down().await.unwrap();
-        assert_eq!(r.downloaded, 3, "{r:?}");
-        assert_eq!(std::fs::read(b.vault.root.join("Robot.SLDASM")).unwrap(), b"robot v2");
-        assert_eq!(std::fs::read(b.vault.root.join("Spacer.SLDPRT")).unwrap(), b"spacer v1");
-    }
-
-    #[tokio::test]
-    async fn half_finished_push_is_invisible_then_resumes() {
-        let (drive, gear, robot, a, b) = team().await;
-        let av = &a.vault;
-        av.check_out(&gear).await.unwrap();
-        av.check_out(&robot).await.unwrap();
-        edit(av, "Gear.SLDPRT", b"gear v2");
-        edit(av, "Robot.SLDASM", b"robot v2");
-
-        drive.crash_after_uploads(1); // gear uploads, then the "app crashes"
-        let req = PushRequest { files: vec![gear.clone(), robot.clone()], message: "m".into(), ..Default::default() };
-        assert!(av.push(req).await.is_err());
-        assert_eq!(drive.content(&gear).unwrap(), b"gear v2", "gear really is on Drive");
-
-        // Blair sees neither file yet: the gear is tagged with an uncommitted changeset.
-        let r = b.vault.sync_down().await.unwrap();
-        assert_eq!(r.downloaded, 0);
-        assert!(r.deferred.iter().any(|d| matches!(d, Deferred::Pending { file_id, .. } if *file_id == gear)));
-        assert_eq!(std::fs::read(b.vault.root.join("Gear.SLDPRT")).unwrap(), b"gear v1");
-
-        drive.clear_faults();
-        let done = av.resume_pushes().await.unwrap();
-        assert_eq!(done.len(), 1);
-        assert!(av.index.journal().unwrap().is_empty());
-
-        let r = b.vault.sync_down().await.unwrap();
-        assert_eq!(r.downloaded, 2);
-        assert_eq!(std::fs::read(b.vault.root.join("Gear.SLDPRT")).unwrap(), b"gear v2");
-        assert_eq!(std::fs::read(b.vault.root.join("Robot.SLDASM")).unwrap(), b"robot v2");
-    }
-
-    #[tokio::test]
-    async fn refuses_files_not_checked_out_or_changed_underneath() {
-        let (drive, gear, robot, a, b) = team().await;
-        let av = &a.vault;
-        let req = |files: Vec<String>| PushRequest { files, message: "m".into(), ..Default::default() };
-        assert!(matches!(av.push(req(vec![gear.clone()])).await, Err(Error::NotCheckedOut(_))));
-
-        b.vault.check_out(&robot).await.unwrap();
-        assert!(matches!(av.push(req(vec![robot.clone()])).await, Err(Error::Locked { .. })));
-
-        // Lock broken and file replaced behind Alex's back: conflict, nothing uploaded.
-        av.check_out(&gear).await.unwrap();
-        edit(av, "Gear.SLDPRT", b"alex's gear");
-        b.vault.break_lock(&gear).await.unwrap();
-        drive.external_edit(&gear, b"someone else's gear");
-        let relock = crate::drive::LockInfo {
-            owner: av.me.clone(),
-            owner_name: av.my_name.clone(),
-            lock_id: "x".into(),
-            locked_at: String::new(),
-            machine: av.machine.clone(),
-        };
-        av.drive.update_metadata(&gear, av.lock_patch(&relock)).await.unwrap();
-        assert!(matches!(av.push(req(vec![gear.clone()])).await, Err(Error::Conflict(_))));
-        assert_eq!(std::fs::read(av.root.join("Gear.SLDPRT")).unwrap(), b"alex's gear", "local work kept");
-    }
-
-    /// The vault is a folder deep inside a bigger drive: paths start at that
-    /// folder, new files and check-in records land inside it, and the rest of
-    /// the drive is never touched.
-    #[tokio::test]
-    async fn works_when_the_vault_is_a_subfolder() {
-        let drive = FakeDrive::new("seed@team.org");
-        let top = drive.drive_id.clone();
-        let cache = drive.seed_folder(&top, "CacheCAD");
-        let robot = drive.seed_folder(&cache, "Robot");
-        let gear = drive.seed_file(&robot, "Gear.SLDPRT", b"gear v1");
-        drive.seed_file(&top, "Unrelated.txt", b"keep out");
-
-        let mut a = vault(&drive, "alex@team.org", "pc-a");
-        let mut b = vault(&drive, "blair@team.org", "pc-b");
-        for v in [&mut a.vault, &mut b.vault] {
-            v.root_id = cache.clone();
-            v.sync_down().await.unwrap();
-        }
-        let (av, bv) = (&a.vault, &b.vault);
-        assert_eq!(std::fs::read(av.root.join("Robot/Gear.SLDPRT")).unwrap(), b"gear v1");
-        assert!(!av.root.join("Unrelated.txt").exists(), "files outside the folder aren't synced");
-
-        av.check_out(&gear).await.unwrap();
-        edit(av, "Robot/Gear.SLDPRT", b"gear v2");
-        std::fs::write(av.root.join("Robot/Spacer.SLDPRT"), b"new").unwrap();
-        let out = av
-            .push(PushRequest {
-                files: vec![gear.clone()],
-                new_files: vec!["Robot/Spacer.SLDPRT".into()],
-                message: "m".into(),
-                keep_locked: false,
-                moves: vec![],
-            })
-            .await
-            .unwrap();
-        assert_eq!(out.files, 2);
-
-        // Check-in records went inside the chosen folder, not the drive root.
-        let meta: Vec<_> = av.index.all_files().unwrap().into_iter().filter(|f| f.name == ".permafrost").collect();
-        assert_eq!(meta.len(), 1);
-        assert_eq!(meta[0].parent.as_deref(), Some(cache.as_str()), ".permafrost lives in the vault folder");
-
-        let r = bv.sync_down().await.unwrap();
-        assert_eq!(r.downloaded, 2);
-        assert_eq!(std::fs::read(bv.root.join("Robot/Gear.SLDPRT")).unwrap(), b"gear v2");
-        assert_eq!(std::fs::read(bv.root.join("Robot/Spacer.SLDPRT")).unwrap(), b"new");
-    }
-
-    #[tokio::test]
-    async fn transient_upload_errors_leave_a_resumable_journal() {
-        let (drive, gear, _robot, a, _b) = team().await;
-        let av = &a.vault;
-        av.check_out(&gear).await.unwrap();
-        edit(av, "Gear.SLDPRT", b"gear v2");
-        drive.fail_next_uploads(1);
-        let req = PushRequest { files: vec![gear.clone()], message: "m".into(), keep_locked: true, ..Default::default() };
-        assert!(av.push(req).await.is_err());
-        assert_eq!(av.index.journal().unwrap().len(), 1);
-        av.resume_pushes().await.unwrap();
-        let f = drive.get_file(&gear).await.unwrap();
-        assert!(av.i_hold_lock(&f) && f.read_only, "kept checked out");
-        assert!(!localfs::is_read_only(&av.root.join("Gear.SLDPRT")));
-    }
-}
+#[path = "push_tests.rs"]
+mod tests;

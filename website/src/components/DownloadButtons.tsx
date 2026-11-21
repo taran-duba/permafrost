@@ -1,19 +1,25 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { detectPlatform } from "../lib/platform";
-import { MAC_BUILD_URL, RELEASES_URL, useRelease, type ReleaseState } from "../lib/release";
+import { MAC_BUILD_URL, RELEASES_URL, useRelease, type Product, type ReleaseState } from "../lib/release";
 import { AppleIcon, WindowsIcon } from "./BrandIcons";
 
 type Choice = { id: "windows" | "mac"; label: string; href: string; icon: ReactNode; available: boolean };
 
-export function hrefFor(state: ReleaseState, id: "windows" | "mac" | "windowsMsi"): string {
+/** Direct installer URL once known; /download/[lite/]<platform> (which redirects) while loading. */
+export function hrefFor(
+  state: ReleaseState,
+  id: "windows" | "mac" | "windowsMsi",
+  product: Product = "permafrost",
+): string {
   if (state.status === "error") return RELEASES_URL;
-  if (state.status === "loading") return `/download/${id === "windowsMsi" ? "windows-msi" : id}`;
+  if (state.status === "loading")
+    return `/download/${product === "lite" ? "lite/" : ""}${id === "windowsMsi" ? "windows-msi" : id}`;
   return state.info[id]?.url ?? RELEASES_URL;
 }
 
 const noSubscribe = () => () => {};
 
-/** Hero call to action: the visitor's own OS first, the other one beside it. */
+/** Hero call to action for Permafrost: the visitor's own OS first, the other one beside it. Lite is linked below. */
 export function DownloadButtons() {
   const release = useRelease();
   // "other" while prerendering, so the static HTML and the first client render agree.
@@ -63,6 +69,10 @@ export function DownloadButtons() {
         <span>Windows 10 &amp; 11 (x64){macMissing ? "" : " and Apple Silicon Macs"}</span>
         <span aria-hidden>·</span>
         <span>Source on GitHub</span>
+        <span aria-hidden>·</span>
+        <a className="text-link" href="#products">
+          Prefer CacheCAD-style? Try Lite
+        </a>
       </p>
     </div>
   );
