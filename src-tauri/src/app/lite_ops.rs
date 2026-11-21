@@ -225,13 +225,14 @@ mod tests {
 
     #[test]
     fn local_folders_stay_inside_the_root_folder() {
-        let base = Path::new("/home/lee/Documents/Permafrost Lite");
+        // A full path on this OS: "/home/..." has no drive letter, so Windows doesn't treat it as one.
+        let base = if cfg!(windows) { Path::new(r"C:\Users\lee\Documents\Permafrost Lite") } else { Path::new("/home/lee/Documents/Permafrost Lite") };
         assert_eq!(local_root_for(base, "").unwrap(), None);
         assert_eq!(local_root_for(base, "Robot 2026").unwrap(), Some(base.join("Robot 2026")));
         assert_eq!(local_root_for(base, &base.join("Arm").to_string_lossy()).unwrap(), Some(base.join("Arm")));
         assert!(local_root_for(base, "../Elsewhere").is_err());
         assert!(local_root_for(base, "a/b").is_err());
-        assert!(local_root_for(base, "/etc").is_err());
+        assert!(local_root_for(base, if cfg!(windows) { r"C:\Windows" } else { "/etc" }).is_err());
         assert!(local_root_for(base, &base.to_string_lossy()).is_err());
     }
 }
