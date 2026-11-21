@@ -168,7 +168,12 @@ async fn run_lite(app: &AppHandle, r: &mut SmokeResult) -> Result<(), String> {
     state.sync_once().await.map_err(|e| format!("refresh: {e}"))?;
     r.files_downloaded = super::smoke_lite::first_download(&state).await?;
     wait_for_ui(app, r).await?;
-    // The UI driver may have reopened the demo (a fresh drive); download it again.
+    // The UI driver reopens the demo (a fresh drive) and finally leaves it; open it again
+    // if needed and download it again.
+    if state.vault.read().await.is_none() {
+        state.open_demo().await.map_err(|e| format!("reopen demo vault: {e}"))?;
+    }
+    state.sync_once().await.map_err(|e| format!("refresh: {e}"))?;
     let _guard = state.sync_lock.lock().await;
     if !state.vault().await.map_err(|e| e.to_string())?.lite_plan().map_err(|e| e.to_string())?.download.is_empty() {
         super::smoke_lite::first_download(&state).await?;

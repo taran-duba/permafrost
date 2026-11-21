@@ -88,8 +88,8 @@ export function Sidebar({
     <aside className="lite-side">
       <div className="lite-row">
         {googleSignedIn ? (
-          <button className="key" onClick={signOut} disabled={status.demo}>
-            Sign out
+          <button className="key" onClick={signOut} title={status.demo ? "Leave the demo and go back to Sign in" : undefined}>
+            {status.demo ? "Leave demo" : "Sign out"}
           </button>
         ) : (
           <button

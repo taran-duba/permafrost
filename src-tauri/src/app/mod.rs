@@ -215,13 +215,27 @@ impl AppState {
         r
     }
 
+    /// Sign out of Google, or, in the demo, just leave the demo. Leaving the demo never
+    /// touches the saved Google sign-in: the demo didn't create it, and a real sign-in
+    /// saved before the demo started must still be there afterwards.
     pub async fn sign_out(&self) -> Result<()> {
-        Auth::sign_out()?;
-        *self.auth.write().await = None;
+        let was_demo = self.demo.swap(false, std::sync::atomic::Ordering::Relaxed);
+        if !was_demo {
+            Auth::sign_out()?;
+            *self.auth.write().await = None;
+        }
         *self.account.write().await = None;
         *self.vault.write().await = None;
         *self.folder_name.write().await = None;
-        self.demo.store(false, std::sync::atomic::Ordering::Relaxed);
+        if was_demo {
+            // Back to the Google account (and its last project) the demo was opened over, if any.
+            let auth = self.auth.read().await.clone();
+            if let Some(auth) = auth {
+                if let Err(e) = self.set_auth(auth).await {
+                    tracing::warn!(%e, "could not reopen the signed-in account after the demo");
+                }
+            }
+        }
         Ok(())
     }
 
