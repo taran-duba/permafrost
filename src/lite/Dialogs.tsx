@@ -280,7 +280,25 @@ export function Settings({
       <section>
         <h3>Account</h3>
         <div className="lite-field">
-          <span style={{ flex: 1 }}>{status.demo ? "Demo" : status.account ?? <span className="muted">Not signed in</span>}</span>
+          <span style={{ flex: 1 }}>
+            {status.demo ? "Demo (nothing here touches Google Drive)" : status.account ?? <span className="muted">Not signed in</span>}
+          </span>
+          {(status.demo || status.account) && (
+            <button
+              className="key"
+              onClick={() =>
+                api
+                  .signOut()
+                  .then(() => {
+                    onClose();
+                    onChanged();
+                  })
+                  .catch((e) => toasts.error(errorText(e)))
+              }
+            >
+              {status.demo ? "Leave demo" : "Sign out"}
+            </button>
+          )}
         </div>
       </section>
       <section>

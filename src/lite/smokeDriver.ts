@@ -84,6 +84,10 @@ export async function runLiteSmokeUi(): Promise<void> {
       first.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
       await waitFor("Demo Team Drive to load", () => text(document.querySelector(".lite-title") ?? document.body).startsWith("Demo Team Drive"));
     });
+    await step("Leave demo goes back to Sign in", async () => {
+      await click("Leave demo", () => button("Leave demo"));
+      await waitFor("the sign-in screen", () => button("Sign in with Google") || all(".lite-empty strong").some((s) => text(s).startsWith("Sign in with Google")));
+    });
   } catch {
     // The failed step is recorded; report what we have.
   }
